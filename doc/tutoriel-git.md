@@ -42,17 +42,6 @@ ou en une seule commande :
 git checkout -b ma-fonction
 ```
 
-## 🙋 6. Initialiser votre logbook
-
-La tenue d'un journal de bord (logbook) est impérative pour ce projet.
-
-Copiez le fichier `logbook-template.md` et renommez-le comme suit: `logbook-<VOTRENOM>.md` (remplacez `<VOTRENOM>` par votre nom de famille sans caractères spéciaux ni espaces)
-
-Chaque jour où vous travaillez sur le projet, renseignez le logbook avec les informations demandées.
-
-* Vous pourrez ainsi visualiser votre avancement au fur et à mesure du projet, et vous remémorer les points qui ont bloqué
-* Vous pourrez justifier votre avancement (c'est un critère de notation)
-
 ## 💾 5. Ajouter, commit & push
 
 ```bash
