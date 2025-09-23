@@ -68,8 +68,11 @@ git push origin ma-fonction
 ## 🏷️ 7. Bonnes pratiques
 
 ✅ Des commits petits et fréquents
+
 ✅ Des messages clairs: `Ajoute fonction X`, `Corrige bug Y`
+
 ✅ Une branche = une fonctionnalité / correction
+
 ✅ Pas de commit géant "version finale"
 
 ## 🆘 8. Besoin d’aide ?
