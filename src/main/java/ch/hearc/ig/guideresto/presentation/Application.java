@@ -1,12 +1,16 @@
 package ch.hearc.ig.guideresto.presentation;
 
 import ch.hearc.ig.guideresto.business.*;
+import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 import ch.hearc.ig.guideresto.persistence.FakeItems;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -19,7 +23,20 @@ public class Application {
     private static final Logger logger = LogManager.getLogger(Application.class);
 
     public static void main(String[] args) {
-        scanner = new Scanner(System.in);
+        Connection c = ConnectionUtils.getConnection();
+
+        try (
+                PreparedStatement s = c.prepareStatement("INSERT INTO TYPES_GASTRONOMIQUES (LIBELLE, DESCRIPTION) VALUES ('TEST', 'TEST')")
+        ) {
+            s.executeUpdate();
+            c.commit();
+            System.out.println("La connexion à la base fonctionne. Le test est vraiment ajouté. Par contre, il reste à mapper tout le reste. Bonne chance à nous GIGALOL");
+            System.out.println("NE PAS OUBLIER LE COMMIT, ou passer à l'autocommit mais je sais pas comment on fait");
+
+        } catch (SQLException e) {
+            System.out.println(e);
+        }
+        /*scanner = new Scanner(System.in);
 
         System.out.println("Bienvenue dans GuideResto ! Que souhaitez-vous faire ?");
         int choice;
@@ -27,7 +44,7 @@ public class Application {
             printMainMenu();
             choice = readInt();
             proceedMainMenu(choice);
-        } while (choice != 0);
+        } while (choice != 0);*/
     }
 
     /**
