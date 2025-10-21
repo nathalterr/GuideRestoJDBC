@@ -42,6 +42,7 @@ public class Restaurant implements IBusinessObject {
         this.type = type;
     }
 
+
     public Integer getId() {
         return id;
     }

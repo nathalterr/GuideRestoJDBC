@@ -3,12 +3,16 @@ package ch.hearc.ig.guideresto.presentation;
 import ch.hearc.ig.guideresto.business.*;
 import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 import ch.hearc.ig.guideresto.persistence.FakeItems;
+import ch.hearc.ig.guideresto.services.CityMapper;
+import ch.hearc.ig.guideresto.services.RestaurantMapper;
+import ch.hearc.ig.guideresto.services.RestaurantTypeMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
@@ -23,19 +27,81 @@ public class Application {
     private static final Logger logger = LogManager.getLogger(Application.class);
 
     public static void main(String[] args) {
+
         Connection c = ConnectionUtils.getConnection();
+        CityMapper cityMapper = new CityMapper(c);
+        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper(c);
+        RestaurantMapper restaurantMapper = new RestaurantMapper(c);
 
-        try (
-                PreparedStatement s = c.prepareStatement("INSERT INTO TYPES_GASTRONOMIQUES (LIBELLE, DESCRIPTION) VALUES ('TEST', 'TEST')")
-        ) {
-            s.executeUpdate();
+        try {
+            // --- Création City ---
+            City city = new City("1000", "Testville");
+            cityMapper.create(city);
+            System.out.println("City créé : " + city.getId() + " - " + city.getCityName());
+
+            // --- Création RestaurantType ---
+            RestaurantType type = new RestaurantType("TestType_" + System.currentTimeMillis(), "Description test");
+            typeMapper.create(type);
+            System.out.println("Type créé : " + type.getId() + " - " + type.getLabel());
+
+            // --- Création Localisation ---
+            Localisation address = new Localisation("123 rue de Test", city);
+
+            // --- Création Restaurant ---
+            Restaurant restaurant = new Restaurant(null, "TestResto", "Description resto", "www.test.com", address, type);
+            restaurantMapper.create(restaurant);
+            System.out.println("Restaurant créé : " + restaurant.getId() + " - " + restaurant.getName());
+
+            // --- Lecture Restaurant ---
+            Restaurant fetched = restaurantMapper.findById(restaurant.getId());
+            System.out.println("Restaurant lu : " + fetched.getId() + " - " + fetched.getName()
+                    + " - " + fetched.getAddress().getStreet()
+                    + " - " + fetched.getAddress().getCity().getCityName()
+                    + " - " + fetched.getType().getLabel());
+
+            // --- Update Restaurant ---
+            fetched.setDescription("Nouvelle description");
+            restaurantMapper.update(fetched);
+            System.out.println("Restaurant mis à jour.");
+
+            // --- Suppression Restaurant ---
+            restaurantMapper.deleteById(fetched.getId());
+            System.out.println("Restaurant supprimé.");
+
+            // --- Suppression Type et City ---
+            typeMapper.deleteById(type.getId());
+            cityMapper.deleteById(city.getId());
+            System.out.println("Type et City supprimés.");
+
             c.commit();
-            System.out.println("La connexion à la base fonctionne. Le test est vraiment ajouté. Par contre, il reste à mapper tout le reste. Bonne chance à nous GIGALOL");
-            System.out.println("NE PAS OUBLIER LE COMMIT, ou passer à l'autocommit mais je sais pas comment on fait");
-
         } catch (SQLException e) {
-            System.out.println(e);
+            e.printStackTrace();
+            try { c.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
         }
+        /*
+
+        try (PreparedStatement s = c.prepareStatement(
+                "INSERT INTO TYPES_GASTRONOMIQUES (LIBELLE, DESCRIPTION) VALUES (?, ?)"
+        )) {
+            System.out.println("Test#1");
+            s.setString(1, "test5");
+            s.setString(2, "test4");
+            System.out.println("Test#2");
+            s.executeUpdate();
+            System.out.println("Test#3");
+
+            c.commit();
+            System.out.println("La connexion à la base fonctionne. Test ajouté !");
+            c.commit();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+*/
+
+
+
+
+// menu de base que j'ai pour le moment la flemme d'utiliser
         /*scanner = new Scanner(System.in);
 
         System.out.println("Bienvenue dans GuideResto ! Que souhaitez-vous faire ?");
