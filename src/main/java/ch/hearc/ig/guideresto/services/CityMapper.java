@@ -1,13 +1,11 @@
 package ch.hearc.ig.guideresto.services;
 
 import ch.hearc.ig.guideresto.business.City;
+import ch.hearc.ig.guideresto.business.RestaurantType;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -62,28 +60,43 @@ public class CityMapper extends AbstractMapper<City> {
 
     @Override
     public City create(City city) {
-        String seqSql = getSequenceQuery();
-        try (PreparedStatement seqStmt = connection.prepareStatement(seqSql);
-             ResultSet rs = seqStmt.executeQuery()) {
-            if (rs.next()) {
-                city.setId(rs.getInt(1));
-            }
-        } catch (SQLException e) {
-            logger.error("create sequence SQLException: {}", e.getMessage());
-        }
+        String sql = "BEGIN INSERT INTO VILLES (code_postal, nom_ville) " +
+                "VALUES (?, ?) RETURNING numero INTO ?; END;";
 
-        String insertSql = "INSERT INTO VILLES (numero, code_postal, nom_ville) VALUES (?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(insertSql)) {
-            stmt.setInt(1, city.getId());
-            stmt.setString(2, city.getZipCode());
-            stmt.setString(3, city.getCityName());
+        try (CallableStatement stmt = connection.prepareCall(sql)) {
+            stmt.setString(1, city.getZipCode());
+            stmt.setString(2, city.getCityName());
+            stmt.registerOutParameter(3, java.sql.Types.INTEGER);
+
             stmt.executeUpdate();
+
+            int generatedId = stmt.getInt(3);
+            city.setId(generatedId);
+
             if (!connection.getAutoCommit()) connection.commit();
+            return city;
+
         } catch (SQLException e) {
-            logger.error("create insert SQLException: {}", e.getMessage());
+            if (e.getErrorCode() == 1) { // Doublon
+                logger.info("Ville '{}' déjà existante, récupération via findByName()", city.getCityName());
+                try {
+                    return findByName(city.getCityName());
+                } catch (SQLException ex) {
+                    logger.error("Erreur findByName après doublon: {}", ex.getMessage());
+                }
+            } else {
+                logger.error("Erreur create City: {}", e.getMessage());
+            }
+
+            try { connection.rollback(); } catch (SQLException r) {
+                logger.error("Rollback failed: {}", r.getMessage());
+            }
+            return null;
         }
-        return city;
     }
+
+
+
 
     @Override
     public boolean update(City city) {

@@ -1,5 +1,6 @@
 package ch.hearc.ig.guideresto.services;
 
+import ch.hearc.ig.guideresto.business.Restaurant;
 import ch.hearc.ig.guideresto.business.RestaurantType;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
@@ -58,34 +59,45 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         return types;
     }
 
+
     @Override
-    public RestaurantType create(RestaurantType object) {
-        String seqSql = getSequenceQuery();
-        try (PreparedStatement seqStmt = connection.prepareStatement(seqSql);
-             ResultSet rs = seqStmt.executeQuery()) {
-            if (rs.next()) {
-                int id = rs.getInt(1);
-                object.setId(id);
-            }
-        } catch (SQLException ex) {
-            logger.error("create sequence SQLException: {}", ex.getMessage());
-        }
+    public RestaurantType create(RestaurantType type) {
+        String sql = "BEGIN INSERT INTO TYPES_GASTRONOMIQUES (libelle, description) " +
+                "VALUES (?, ?) RETURNING numero INTO ?; END;";
 
-        String insertSql = "INSERT INTO TYPES_GASTRONOMIQUES (numero, libelle, description) VALUES (?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(insertSql)) {
-            stmt.setInt(1, object.getId());
-            stmt.setString(2, object.getLabel());
-            stmt.setString(3, object.getDescription());
+        try (CallableStatement stmt = connection.prepareCall(sql)) {
+            stmt.setString(1, type.getLabel());
+            stmt.setString(2, type.getDescription());
+            stmt.registerOutParameter(3, java.sql.Types.INTEGER);
+
             stmt.executeUpdate();
-            if (!connection.getAutoCommit()) {
-                connection.commit();
-            }
-        } catch (SQLException ex) {
-            logger.error("create insert SQLException: {}", ex.getMessage());
-        }
 
-        return object;
+            int generatedId = stmt.getInt(3);
+            type.setId(generatedId);
+
+            if (!connection.getAutoCommit()) connection.commit();
+            return type;
+
+        } catch (SQLException e) {
+            // Cas attendu : doublon (ORA-00001)
+            if (e.getErrorCode() == 1) { // ORA-00001 unique constraint violated
+                logger.info("Type '{}' déjà existant, récupération via findByName()", type.getLabel());
+                try {
+                    return findByName(type.getLabel());
+                } catch (SQLException ex) {
+                    logger.error("Erreur findByName après doublon: {}", ex.getMessage());
+                }
+            } else {
+                logger.error("Erreur create RestaurantType: {}", e.getMessage());
+            }
+
+            try { connection.rollback(); } catch (SQLException r) {
+                logger.error("Rollback failed: {}", r.getMessage());
+            }
+            return null;
+        }
     }
+
 
     @Override
     public boolean update(RestaurantType object) {
