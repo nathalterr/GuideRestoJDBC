@@ -45,6 +45,31 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         return null;
     }
 
+    public Restaurant findByName(String name) {
+        String sql = "SELECT numero, nom, description, site_web, adresse, fk_type, fk_vill FROM RESTAURANTS WHERE nom = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    RestaurantType type = new RestaurantTypeMapper(connection).findById(rs.getInt("fk_type"));
+                    City city = new CityMapper(connection).findById(rs.getInt("fk_vill"));
+                    return new Restaurant(
+                            rs.getInt("numero"),
+                            rs.getString("nom"),
+                            rs.getString("description"),
+                            rs.getString("site_web"),
+                            rs.getString("adresse"),
+                            city,
+                            type
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Erreur findByName Restaurant: {}", e.getMessage());
+        }
+        return null;
+    }
+
     @Override
     public Set<Restaurant> findAll() {
         Set<Restaurant> restaurants = new HashSet<>();
