@@ -70,6 +70,58 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         return null;
     }
 
+    public Restaurant findByCity(String cityName) {
+        String sql = "SELECT r.numero, r.nom, r.description, r.site_web, r.adresse, r.fk_type, r.fk_vill FROM RESTAURANTS r INNER JOIN VILLES v ON r.fk_vill = v.id WHERE v.nom_vill = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, cityName);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
+                    City city = new CityMapper().findById(rs.getInt("fk_vill"));
+                    return new Restaurant(
+                            rs.getInt("numero"),
+                            rs.getString("nom"),
+                            rs.getString("description"),
+                            rs.getString("site_web"),
+                            rs.getString("adresse"),
+                            city,
+                            type
+                    );
+                }
+            }catch (SQLException e) {
+                logger.error("Erreur findByCity Restaurant: {}", e.getMessage());
+            }
+            return null;
+            } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Restaurant findByRestaurantType(String label) throws SQLException {
+        String sql = "SELECT r.numero, r.nom, r.description, r.site_web, r.adresse, r.fk_type, r.fk_vill FROM RESTAURANTS r INNER JOIN TYPES_GASTRONOMIQUES t ON r.fk_type = t.numero WHERE t.libelle = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, label);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
+                    City city = new CityMapper().findById(rs.getInt("fk_vill"));
+                    return new Restaurant(
+                            rs.getInt("numero"),
+                            rs.getString("nom"),
+                            rs.getString("description"),
+                            rs.getString("site_web"),
+                            rs.getString("adresse"),
+                            city,
+                            type
+                    );
+                }
+            } catch (SQLException e) {
+                logger.error("Erreur findByRestaurantType Restaurant: {}", e.getMessage());
+            }
+            return null;
+        }
+        }
+
     @Override
     public Set<Restaurant> findAll() {
         Set<Restaurant> restaurants = new HashSet<>();

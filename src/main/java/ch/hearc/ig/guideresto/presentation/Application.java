@@ -131,10 +131,11 @@ public class Application {
     private static void searchRestaurantByName() {
         System.out.println("Veuillez entrer une partie du nom recherché : ");
         String research = readString();
+        RestaurantMapper restaurantMapper = new RestaurantMapper();
 
         // Comme on ne peut pas faire de requête SQL avec la classe FakeItems, on trie les données manuellement.
         // Il est évident qu'une fois que vous utiliserez une base de données, il ne faut PAS garder ce système.
-        Set<Restaurant> fullList = FakeItems.getAllRestaurants();
+        Set<Restaurant> fullList = restaurantMapper.findByName(research);
         Set<Restaurant> filteredList = new LinkedHashSet();
 
         for (Restaurant currentRestaurant : fullList) { // On parcourt la liste complète et on ajoute les restaurants correspondants à la liste filtrée.
