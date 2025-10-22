@@ -15,13 +15,13 @@ public class MainTest {
         Connection c = ConnectionUtils.getConnection();
 
         // Mappers
-        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper(c);
-        CityMapper cityMapper = new CityMapper(c);
-        RestaurantMapper restaurantMapper = new RestaurantMapper(c);
-        EvaluationCriteriaMapper criteriaMapper = new EvaluationCriteriaMapper(c);
-        CompleteEvaluationMapper completeEvalMapper = new CompleteEvaluationMapper(c);
-        GradeMapper gradeMapper = new GradeMapper(c);
-        BasicEvaluationMapper basicEvalMapper = new BasicEvaluationMapper(c);
+        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper();
+        CityMapper cityMapper = new CityMapper();
+        RestaurantMapper restaurantMapper = new RestaurantMapper();
+        EvaluationCriteriaMapper criteriaMapper = new EvaluationCriteriaMapper();
+        CompleteEvaluationMapper completeEvalMapper = new CompleteEvaluationMapper();
+        GradeMapper gradeMapper = new GradeMapper();
+        BasicEvaluationMapper basicEvalMapper = new BasicEvaluationMapper();
 
         try {
             // 🔹 Création des entités de test

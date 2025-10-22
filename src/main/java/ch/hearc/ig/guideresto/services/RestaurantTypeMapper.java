@@ -8,12 +8,14 @@ import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 
+import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
+
 public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
 
     private final Connection connection;
 
-    public RestaurantTypeMapper(Connection connection) {
-        this.connection = connection;
+    public RestaurantTypeMapper() {
+        this.connection = getConnection();
     }
 
     @Override
