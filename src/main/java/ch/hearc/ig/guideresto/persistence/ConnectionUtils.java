@@ -9,22 +9,39 @@ import java.sql.SQLException;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
-/**
- * Provide helper methods to deal with database connections.
- * Ideally, this should also manage connection pools in a bigger application.
- *
- * @author arnaud.geiser
- * @author alain.matile
- */
 public class ConnectionUtils {
 
     private static final Logger logger = LogManager.getLogger();
 
     private static Connection connection;
 
+    private ConnectionUtils() {
+    }
+
     public static Connection getConnection() {
         try {
-            // Load database credentials from resources/database.properties
+            if (connection == null || connection.isClosed()) {
+                createConnection();
+            }
+        } catch (SQLException e) {
+            logger.error("Erreur en vérifiant la connexion : {}", e.getMessage(), e);
+        }
+        return connection;
+    }
+
+    public static void closeConnection() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+                connection = null;
+            }
+        } catch (SQLException e) {
+            logger.error("Erreur lors de la fermeture de la connexion : {}", e.getMessage(), e);
+        }
+    }
+
+    private static void createConnection() {
+        try {
             ResourceBundle dbProps = ResourceBundle.getBundle("database");
             String url = dbProps.getString("database.url");
             String username = dbProps.getString("database.username");
@@ -32,27 +49,13 @@ public class ConnectionUtils {
 
             logger.info("Trying to connect to user schema '{}' with JDBC string '{}'", username, url);
 
-            // Initialize a connection if required
-            if (ConnectionUtils.connection == null || ConnectionUtils.connection.isClosed()) {
-                Connection connection = DriverManager.getConnection(url, username, password);
-                connection.setAutoCommit(false);
-                ConnectionUtils.connection = connection;
-            }
-        } catch (SQLException ex) {
-            logger.error(ex.getMessage(), ex);
-        } catch (MissingResourceException ex) {
-            logger.error(ex.getMessage(), ex);
-        }
-        return ConnectionUtils.connection;
-    }
+            connection = DriverManager.getConnection(url, username, password);
+            connection.setAutoCommit(false);
 
-    public static void closeConnection() {
-        try {
-            if (ConnectionUtils.connection != null && !ConnectionUtils.connection.isClosed()) {
-                ConnectionUtils.connection.close();
-            }
-        } catch (SQLException e) {
-            logger.error(e.getMessage(), e);
+        } catch (SQLException ex) {
+            logger.error("Erreur SQL lors de la création de la connexion : {}", ex.getMessage(), ex);
+        } catch (MissingResourceException ex) {
+            logger.error("Impossible de trouver le fichier de propriétés : {}", ex.getMessage(), ex);
         }
     }
 }

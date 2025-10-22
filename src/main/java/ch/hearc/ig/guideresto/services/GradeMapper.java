@@ -129,12 +129,16 @@ public class GradeMapper extends AbstractMapper<Grade> {
     public boolean deleteById(int id) {
         String sql = "DELETE FROM NOTES WHERE numero = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            System.out.println("Suppression Grade ID=" + id + " en cours...");
             stmt.setInt(1, id);
             int deleted = stmt.executeUpdate();
+            System.out.println("Nombre de lignes supprimées pour Grade : " + deleted);
             if (!connection.getAutoCommit()) connection.commit();
             return deleted > 0;
         } catch (SQLException ex) {
-            logger.error("Erreur delete Grade : {}", ex.getMessage());
+            System.err.println("Erreur delete Grade : " + ex.getMessage());
+            ex.printStackTrace();
+            try { connection.rollback(); } catch (SQLException e) { e.printStackTrace(); }
         }
         return false;
     }
