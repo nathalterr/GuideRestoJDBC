@@ -18,7 +18,7 @@ public class MainTest {
 
         try {
             System.out.println("===== TEST RESTAURANT + CITY MAPPERS =====");
-/*
+
             // 🔹 1️⃣ Création / récupération du type
             RestaurantType type = new RestaurantType("TestTypeMain", "Description type test");
             if (!typeMapper.existsByName(type.getLabel())) {
@@ -28,7 +28,7 @@ public class MainTest {
                 type = typeMapper.findByName(type.getLabel());
                 System.out.println("ℹ️ Type déjà existant : " + type.getId() + " - " + type.getLabel());
             }
-*/
+
             // 🔹 2️⃣ Création / récupération de la ville
             City city = new City("1000", "TestCityMain");
             if (!cityMapper.existsByName(city.getCityName())) {

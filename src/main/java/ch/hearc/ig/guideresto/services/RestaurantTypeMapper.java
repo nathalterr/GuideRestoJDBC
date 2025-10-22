@@ -140,4 +140,37 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     protected String getCountQuery() {
         return "SELECT COUNT(*) FROM TYPES_GASTRONOMIQUES";
     }
+    public RestaurantType findByName(String name) throws SQLException {
+        String sql = "SELECT numero, libelle, description FROM TYPES_GASTRONOMIQUES WHERE libelle = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new RestaurantType(
+                            rs.getInt("numero"),
+                            rs.getString("libelle"),
+                            rs.getString("description")
+                    );
+                }
+            }
+        } catch (SQLException ex) {
+            logger.error("findByName SQLException: {}", ex.getMessage());
+            throw ex;
+        }
+        return null;
+    }
+
+    public boolean existsByName(String name) throws SQLException {
+        String sql = "SELECT 1 FROM TYPES_GASTRONOMIQUES WHERE libelle = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next(); // Si une ligne existe → true
+            }
+        } catch (SQLException ex) {
+            logger.error("existsByName SQLException: {}", ex.getMessage());
+            throw ex;
+        }
+    }
+
 }
