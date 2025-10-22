@@ -134,4 +134,33 @@ public class CityMapper extends AbstractMapper<City> {
     protected String getCountQuery() {
         return "SELECT COUNT(*) FROM VILLES";
     }
+
+    // ✅ Trouve une ville par nom
+    public City findByName(String name) throws SQLException {
+        String sql = "SELECT numero, code_postal, nom_ville FROM VILLES WHERE nom_ville = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new City(
+                            rs.getInt("numero"),
+                            rs.getString("code_postal"),
+                            rs.getString("nom_ville")
+                    );
+                }
+            }
+        }
+        return null;
+    }
+
+    // ✅ Vérifie l'existence par nom (sans charger toute la ville)
+    public boolean existsByName(String name) throws SQLException {
+        String sql = "SELECT 1 FROM VILLES WHERE nom_ville = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
 }

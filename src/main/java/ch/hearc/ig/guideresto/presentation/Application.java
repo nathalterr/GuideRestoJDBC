@@ -485,17 +485,42 @@ public class Application {
     private static void editRestaurantAddress(Restaurant restaurant) {
         System.out.println("Edition de l'adresse d'un restaurant !");
 
-        System.out.println("Nouvelle rue : ");
-        restaurant.getAddress().setStreet(readString());
+        // 🔹 1. Demande de la nouvelle rue
+        System.out.print("Nouvelle rue : ");
+        String newStreet = readString();
 
-        City newCity = pickCity(FakeItems.getCities());
-        if (newCity != null && newCity != restaurant.getAddress().getCity()) {
-            restaurant.getAddress().getCity().getRestaurants().remove(restaurant); // On supprime l'adresse de la ville
-            restaurant.getAddress().setCity(newCity);
-            newCity.getRestaurants().add(restaurant);
+        // 🔹 2. Demande du nom de la ville
+        System.out.print("Nom de la ville : ");
+        String cityName = readString();
+
+        CityMapper cityMapper = new CityMapper();
+        RestaurantMapper restaurantMapper = new RestaurantMapper();
+
+        try {
+            // 🔹 3. Vérifie si la ville existe déjà dans la DB
+            City dbCity = cityMapper.findByName(cityName);
+            if (dbCity == null) {
+                // Si la ville n'existe pas, création
+                System.out.print("Code postal pour la nouvelle ville : ");
+                String postalCode = readString();
+
+                dbCity = new City(null, cityName, postalCode);
+                cityMapper.create(dbCity);
+                System.out.println("Nouvelle ville créée : " + dbCity.getCityName());
+            }
+
+            // 🔹 4. Mise à jour de l'adresse du restaurant
+            boolean updated = restaurantMapper.updateAddress(restaurant, newStreet, dbCity);
+            if (updated) {
+                System.out.println("Adresse mise à jour avec succès !");
+            } else {
+                System.out.println("Erreur lors de la mise à jour de l'adresse.");
+            }
+
+        } catch (SQLException ex) {
+            System.err.println("Erreur lors de la mise à jour de l'adresse : " + ex.getMessage());
+            ex.printStackTrace();
         }
-
-        System.out.println("L'adresse a bien été modifiée ! Merci !");
     }
 
     /**
@@ -507,10 +532,8 @@ public class Application {
         System.out.println("Etes-vous sûr de vouloir supprimer ce restaurant ? (O/n)");
         String choice = readString();
         if (choice.equals("o") || choice.equals("O")) {
-            FakeItems.getAllRestaurants().remove(restaurant);
-            restaurant.getAddress().getCity().getRestaurants().remove(restaurant);
-            restaurant.getType().getRestaurants().remove(restaurant);
-            System.out.println("Le restaurant a bien été supprimé !");
+            RestaurantMapper restaurantMapper = new RestaurantMapper();
+            restaurantMapper.delete(restaurant);
         }
     }
 

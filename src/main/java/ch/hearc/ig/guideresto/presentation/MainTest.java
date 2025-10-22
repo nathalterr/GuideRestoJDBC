@@ -1,76 +1,94 @@
 package ch.hearc.ig.guideresto.presentation;
 
 import ch.hearc.ig.guideresto.business.*;
-import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import ch.hearc.ig.guideresto.services.*;
 import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Date;
 
 public class MainTest {
 
     public static void main(String[] args) {
-        Connection c = ConnectionUtils.getConnection();
+        Connection connection = ConnectionUtils.getConnection();
 
-        // Mappers
         RestaurantTypeMapper typeMapper = new RestaurantTypeMapper();
         CityMapper cityMapper = new CityMapper();
         RestaurantMapper restaurantMapper = new RestaurantMapper();
-        EvaluationCriteriaMapper criteriaMapper = new EvaluationCriteriaMapper();
-        CompleteEvaluationMapper completeEvalMapper = new CompleteEvaluationMapper();
-        GradeMapper gradeMapper = new GradeMapper();
-        BasicEvaluationMapper basicEvalMapper = new BasicEvaluationMapper();
 
         try {
-            // 🔹 Création des entités de test
-            RestaurantType type = new RestaurantType("TestType_" + System.currentTimeMillis(), "Description type test");
-            typeMapper.create(type);
-            City city = new City("1000", "TestCity_" + System.currentTimeMillis());
-            cityMapper.create(city);
-            Restaurant restaurant = new Restaurant(null, "TestRestaurant_" + System.currentTimeMillis(), "Description restaurant", "www.test.com", new Localisation("Rue du Test 1", city), type);
-            restaurantMapper.create(restaurant);
-            EvaluationCriteria criteria = new EvaluationCriteria("Critère Test", "Description critère test");
-            criteriaMapper.create(criteria);
-            CompleteEvaluation completeEval = new CompleteEvaluation(new Date(), restaurant, "Commentaire test", "UserTest");
-            completeEvalMapper.create(completeEval);
-            Grade grade = null;
-            if (criteria.getId() != 0 && completeEval.getId() != 0) {
-                grade = new Grade(5, completeEval, criteria);
-                gradeMapper.create(grade);
+            System.out.println("===== TEST RESTAURANT + CITY MAPPERS =====");
+/*
+            // 🔹 1️⃣ Création / récupération du type
+            RestaurantType type = new RestaurantType("TestTypeMain", "Description type test");
+            if (!typeMapper.existsByName(type.getLabel())) {
+                typeMapper.create(type);
+                System.out.println("✅ Type créé : " + type.getId() + " - " + type.getLabel());
+            } else {
+                type = typeMapper.findByName(type.getLabel());
+                System.out.println("ℹ️ Type déjà existant : " + type.getId() + " - " + type.getLabel());
             }
-            BasicEvaluation basicEval = new BasicEvaluation(new Date(), restaurant, true, "127.0.0.1");
-            basicEvalMapper.create(basicEval);
+*/
+            // 🔹 2️⃣ Création / récupération de la ville
+            City city = new City("1000", "TestCityMain");
+            if (!cityMapper.existsByName(city.getCityName())) {
+                cityMapper.create(city);
+                System.out.println("✅ Ville créée : " + city.getId() + " - " + city.getCityName());
+            } else {
+                city = cityMapper.findByName(city.getCityName());
+                System.out.println("ℹ️ Ville déjà existante : " + city.getId() + " - " + city.getCityName());
+            }
 
-            c.commit();
-            System.out.println("Toutes les entités de test créées ✅");
+            // 🔹 3️⃣ Création du restaurant
+            Localisation loc = new Localisation("Rue Initiale", city);
+            Restaurant restaurant = new Restaurant(null, "TestRestaurantMain", "Desc test", "www.test.com", loc, null);
+            restaurantMapper.create(restaurant);
+            System.out.println("✅ Restaurant créé : " + restaurant.getId());
+            System.out.println("Adresse avant modif : " +
+                    restaurant.getAddress().getStreet() + ", " +
+                    restaurant.getAddress().getCity().getCityName());
 
-            // 🔹 Suppression des tests dans le bon ordre
-            if (grade != null) deleteWithLog(gradeMapper, grade.getId(), "Grade");
-            deleteWithLog(completeEvalMapper, completeEval.getId(), "CompleteEvaluation");
-            deleteWithLog(basicEvalMapper, basicEval.getId(), "BasicEvaluation");
-            deleteWithLog(restaurantMapper, restaurant.getId(), "Restaurant");
-            deleteWithLog(criteriaMapper, criteria.getId(), "EvaluationCriteria");
-            deleteWithLog(cityMapper, city.getId(), "City");
-            deleteWithLog(typeMapper, type.getId(), "RestaurantType");
+            // 🔹 4️⃣ Création / récupération de la nouvelle ville
+            City newCity = new City("2000", "NouvelleVille");
+            if (!cityMapper.existsByName(newCity.getCityName())) {
+                cityMapper.create(newCity);
+                System.out.println("✅ Nouvelle ville créée : " + newCity.getCityName());
+            } else {
+                newCity = cityMapper.findByName(newCity.getCityName());
+                System.out.println("ℹ️ Ville déjà existante : " + newCity.getCityName());
+            }
 
-            c.commit();
-            System.out.println("Toutes les entités de test supprimées ✅");
+            // 🔹 5️⃣ Mise à jour adresse
+            boolean updated = restaurantMapper.updateAddress(restaurant, "Nouvelle Rue 123", newCity);
+            System.out.println(updated
+                    ? "✅ Adresse du restaurant mise à jour avec succès"
+                    : "❌ Échec de la mise à jour de l’adresse");
+
+            System.out.println("Adresse après modif : " +
+                    restaurant.getAddress().getStreet() + ", " +
+                    restaurant.getAddress().getCity().getCityName());
+
+            // 🔹 6️⃣ Suppression du restaurant
+            boolean deleted = restaurantMapper.delete(restaurant);
+            System.out.println(deleted
+                    ? "✅ Restaurant supprimé avec succès"
+                    : "❌ Échec de la suppression du restaurant");
+
+            connection.commit();
+            System.out.println("✅ Commit global effectué.");
 
         } catch (SQLException e) {
-            System.err.println("Erreur SQL globale : " + e.getMessage());
+            System.err.println("💥 Erreur SQL : " + e.getMessage());
             e.printStackTrace();
-            try { c.rollback(); System.out.println("Rollback global effectué ✅"); } catch (SQLException ex) { ex.printStackTrace(); }
+            try {
+                connection.rollback();
+                System.out.println("↩️ Rollback global effectué.");
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
         } finally {
             ConnectionUtils.closeConnection();
-            System.out.println("Connexion fermée ✅");
+            System.out.println("🔒 Connexion fermée.");
         }
-    }
-
-    private static void deleteWithLog(AbstractMapper<?> mapper, int id, String entityName) {
-        System.out.println("Suppression de " + entityName + " avec ID : " + id);
-        boolean success = mapper.deleteById(id);
-        System.out.println(entityName + (success ? " supprimé ✅" : " NON supprimé ❌"));
     }
 }

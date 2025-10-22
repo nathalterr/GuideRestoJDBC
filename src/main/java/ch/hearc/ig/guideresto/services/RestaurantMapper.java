@@ -1,8 +1,6 @@
 package ch.hearc.ig.guideresto.services;
 
-import ch.hearc.ig.guideresto.business.City;
-import ch.hearc.ig.guideresto.business.Restaurant;
-import ch.hearc.ig.guideresto.business.RestaurantType;
+import ch.hearc.ig.guideresto.business.*;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 
@@ -148,8 +146,35 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     @Override
     public boolean delete(Restaurant restaurant) {
-        return deleteById(restaurant.getId());
+        try {
+            int restId = restaurant.getId();
+
+            // 1️⃣ Supprimer les Grades liés aux CompleteEvaluations de ce restaurant
+            CompleteEvaluationMapper completeEvalMapper = new CompleteEvaluationMapper();
+            GradeMapper gradeMapper = new GradeMapper();
+            BasicEvaluationMapper basicEvalMapper = new BasicEvaluationMapper();
+
+            for (CompleteEvaluation eval : completeEvalMapper.findByRestaurant(restaurant)) {
+                for (Grade grade : gradeMapper.findByCompleteEvaluation(eval)) {
+                    gradeMapper.delete(grade);
+                }
+                completeEvalMapper.delete(eval);
+            }
+
+            // 2️⃣ Supprimer tous les Likes du restaurant
+            for (BasicEvaluation like : basicEvalMapper.findByRestaurant(restaurant)) {
+                basicEvalMapper.delete(like);
+            }
+
+            // 3️⃣ Supprimer le restaurant lui-même
+            return deleteById(restId);
+
+        } catch (Exception ex) {
+            logger.error("Erreur delete restaurant complet : {}", ex.getMessage());
+            return false;
+        }
     }
+
 
     @Override
     public boolean deleteById(int id) {
@@ -180,4 +205,28 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     protected String getCountQuery() {
         return "SELECT COUNT(*) FROM RESTAURANTS";
     }
+
+    public boolean updateAddress(Restaurant restaurant, String newStreet, City newCity) throws SQLException {
+        // 1️⃣ Update de la rue
+        restaurant.getAddress().setStreet(newStreet);
+
+        // 2️⃣ Si la ville change, mettre à jour l'objet en mémoire
+        if (newCity != null && newCity != restaurant.getAddress().getCity()) {
+            restaurant.getAddress().getCity().getRestaurants().remove(restaurant); // Ancienne ville
+            restaurant.getAddress().setCity(newCity);
+            newCity.getRestaurants().add(restaurant); // Nouvelle ville
+        }
+
+        // 3️⃣ Update en base
+        String sql = "UPDATE RESTAURANTS SET adresse = ?, fk_vill = ? WHERE numero = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, restaurant.getAddress().getStreet());
+            stmt.setInt(2, restaurant.getAddress().getCity().getId());
+            stmt.setInt(3, restaurant.getId());
+            int rows = stmt.executeUpdate();
+            if (!connection.getAutoCommit()) connection.commit();
+            return rows > 0;
+        }
+    }
+
 }

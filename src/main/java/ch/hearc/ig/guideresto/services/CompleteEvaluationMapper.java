@@ -154,6 +154,28 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
     protected String getCountQuery() {
         return "SELECT COUNT(*) FROM COMMENTAIRES";
     }
+    public Set<CompleteEvaluation> findByRestaurant(Restaurant restaurant) {
+        Set<CompleteEvaluation> evaluations = new HashSet<>();
+        String sql = "SELECT numero, date_eval, commentaire, nom_utilisateur, fk_rest FROM COMMENTAIRES WHERE fk_rest = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, restaurant.getId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    evaluations.add(new CompleteEvaluation(
+                            rs.getInt("numero"),
+                            rs.getDate("date_eval"),
+                            restaurant,
+                            rs.getString("commentaire"),
+                            rs.getString("nom_utilisateur")
+                    ));
+                }
+            }
+        } catch (SQLException ex) {
+            logger.error("Erreur findByRestaurant CompleteEvaluation : {}", ex.getMessage());
+        }
+        return evaluations;
+    }
+
 }
 
 
