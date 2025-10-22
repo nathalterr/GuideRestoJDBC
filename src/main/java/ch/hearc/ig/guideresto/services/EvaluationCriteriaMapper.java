@@ -8,12 +8,14 @@ import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 
+import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
+
 public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria> {
 
     private final Connection connection;
 
-    public EvaluationCriteriaMapper(Connection connection) {
-        this.connection = connection;
+    public EvaluationCriteriaMapper() {
+        this.connection = getConnection();
     }
 
     @Override

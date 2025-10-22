@@ -11,12 +11,14 @@ import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
+import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
+
 public class CityMapper extends AbstractMapper<City> {
 
     private final Connection connection;
 
-    public CityMapper(Connection connection) {
-        this.connection = connection;
+    public CityMapper() {
+        this.connection = getConnection();
     }
 
     @Override

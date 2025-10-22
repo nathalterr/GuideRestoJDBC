@@ -8,14 +8,16 @@ import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 
+import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
+
 public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation> {
 
     private final Connection connection;
     private final RestaurantMapper restaurantMapper; // pour gérer la FK
 
-    public CompleteEvaluationMapper(Connection connection) {
-        this.connection = connection;
-        this.restaurantMapper = new RestaurantMapper(connection);
+    public CompleteEvaluationMapper() {
+        this.connection = getConnection();
+        this.restaurantMapper = new RestaurantMapper();
     }
 
     @Override

@@ -7,14 +7,16 @@ import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 
+import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
+
 public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
 
     private final Connection connection;
     private final RestaurantMapper restaurantMapper;
 
-    public BasicEvaluationMapper(Connection connection) {
-        this.connection = connection;
-        this.restaurantMapper = new RestaurantMapper(connection);
+    public BasicEvaluationMapper() {
+        this.connection = getConnection();
+        this.restaurantMapper = new RestaurantMapper();
     }
 
     @Override

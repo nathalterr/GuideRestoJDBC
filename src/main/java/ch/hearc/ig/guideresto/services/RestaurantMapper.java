@@ -10,12 +10,14 @@ import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 
+import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
+
 public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     private Connection connection;
 
-    public RestaurantMapper(Connection connection) {
-        this.connection = connection;
+    public RestaurantMapper() {
+        this.connection = getConnection();
     }
 
     @Override
@@ -26,8 +28,8 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     // On récupère le type et la ville via leurs mappers
-                    RestaurantType type = new RestaurantTypeMapper(connection).findById(rs.getInt("fk_type"));
-                    City city = new CityMapper(connection).findById(rs.getInt("fk_vill"));
+                    RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
+                    City city = new CityMapper().findById(rs.getInt("fk_vill"));
                     return new Restaurant(
                             rs.getInt("numero"),
                             rs.getString("nom"),
@@ -52,8 +54,8 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         try (PreparedStatement stmt = connection.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-                RestaurantType type = new RestaurantTypeMapper(connection).findById(rs.getInt("fk_type"));
-                City city = new CityMapper(connection).findById(rs.getInt("fk_vill"));
+                RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
+                City city = new CityMapper().findById(rs.getInt("fk_vill"));
                 Restaurant r = new Restaurant(
                         rs.getInt("numero"),
                         rs.getString("nom"),

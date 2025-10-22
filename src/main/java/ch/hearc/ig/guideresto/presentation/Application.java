@@ -17,6 +17,8 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
 
+import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
+
 /**
  * @author cedric.baudet
  * @author alain.matile
@@ -91,7 +93,7 @@ public class Application {
      * @return L'instance du restaurant choisi par l'utilisateur
      */
     private static Restaurant pickRestaurant(Set<Restaurant> restaurants) {
-        if (restaurants.isEmpty()) { // Si la liste est vide on s'arrête là
+        if (restaurants.isEmpty()) { // Si la liste est vide, on s'arrête là
             System.out.println("Aucun restaurant n'a été trouvé !");
             return null;
         }
@@ -115,8 +117,8 @@ public class Application {
      */
     private static void showRestaurantsList() {
         System.out.println("Liste des restaurants : ");
-
-        Restaurant restaurant = pickRestaurant(FakeItems.getAllRestaurants());
+        RestaurantMapper restaurantMapper = new RestaurantMapper();
+        Restaurant restaurant = pickRestaurant(restaurantMapper.findAll());
 
         if (restaurant != null) { // Si l'utilisateur a choisi un restaurant, on l'affiche, sinon on ne fait rien et l'application va réafficher le menu principal
             showRestaurant(restaurant);
@@ -259,9 +261,10 @@ public class Application {
         System.out.println("Rue : ");
         String street = readString();
         City city = null;
+        CityMapper cityMapper = new CityMapper();
         do
         { // La sélection d'une ville est obligatoire, donc l'opération se répètera tant qu'aucune ville n'est sélectionnée.
-            city = pickCity(FakeItems.getCities());
+            city = pickCity(cityMapper.findAll());
         } while (city == null);
         RestaurantType restaurantType = null;
         do

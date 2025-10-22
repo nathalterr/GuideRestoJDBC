@@ -13,6 +13,8 @@ import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 
+import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
+
 public class GradeMapper extends AbstractMapper<Grade> {
 
     private static final Logger logger = LogManager.getLogger(GradeMapper.class);
@@ -21,10 +23,10 @@ public class GradeMapper extends AbstractMapper<Grade> {
     private final EvaluationCriteriaMapper criteriaMapper;
     private final CompleteEvaluationMapper evaluationMapper;
 
-    public GradeMapper(Connection connection) {
-        this.connection = connection;
-        this.criteriaMapper = new EvaluationCriteriaMapper(connection);
-        this.evaluationMapper = new CompleteEvaluationMapper(connection);
+    public GradeMapper() {
+        this.connection = getConnection();
+        this.criteriaMapper = new EvaluationCriteriaMapper();
+        this.evaluationMapper = new CompleteEvaluationMapper();
     }
 
     @Override
