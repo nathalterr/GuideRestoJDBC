@@ -53,8 +53,8 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             stmt.setString(1, name);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    RestaurantType type = new RestaurantTypeMapper(connection).findById(rs.getInt("fk_type"));
-                    City city = new CityMapper(connection).findById(rs.getInt("fk_vill"));
+                    RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
+                    City city = new CityMapper().findById(rs.getInt("fk_vill"));
                     return new Restaurant(
                             rs.getInt("numero"),
                             rs.getString("nom"),
