@@ -153,6 +153,24 @@ public class CityMapper extends AbstractMapper<City> {
         return null;
     }
 
+    //Trouve une ville par code
+    public City finByZipCode(String zipCode) throws SQLException {
+        String sql = "SELECT numero, code_postal, nom_ville FROM VILLES WHERE code_postal = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, zipCode);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new City(
+                            rs.getInt("numero"),
+                            rs.getString("code_postal"),
+                            rs.getString("nom_ville")
+                    );
+                }
+            }
+        }return null;
+    }
+
+
     // ✅ Vérifie l'existence par nom (sans charger toute la ville)
     public boolean existsByName(String name) throws SQLException {
         String sql = "SELECT 1 FROM VILLES WHERE nom_ville = ?";
