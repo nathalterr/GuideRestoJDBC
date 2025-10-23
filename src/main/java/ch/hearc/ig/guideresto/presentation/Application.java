@@ -131,25 +131,28 @@ public class Application {
     private static void searchRestaurantByName() {
         System.out.println("Veuillez entrer une partie du nom recherché : ");
         String research = readString();
+
         RestaurantMapper restaurantMapper = new RestaurantMapper();
+        try {
+            // Récupère directement tous les restaurants dont le nom contient la chaîne recherchée
+            Set<Restaurant> restaurants = restaurantMapper.findByName(research);
 
-        // Comme on ne peut pas faire de requête SQL avec la classe FakeItems, on trie les données manuellement.
-        // Il est évident qu'une fois que vous utiliserez une base de données, il ne faut PAS garder ce système.
-        Set<Restaurant> fullList = restaurantMapper.findByName(research);
-        Set<Restaurant> filteredList = new LinkedHashSet();
-
-        for (Restaurant currentRestaurant : fullList) { // On parcourt la liste complète et on ajoute les restaurants correspondants à la liste filtrée.
-            if (currentRestaurant.getName().toUpperCase().contains(research.toUpperCase())) { // On met tout en majuscules pour ne pas tenir compte de la casse
-                filteredList.add(currentRestaurant);
+            if (restaurants.isEmpty()) {
+                System.out.println("Aucun restaurant trouvé pour : " + research);
+                return;
             }
-        }
 
-        Restaurant restaurant = pickRestaurant(filteredList);
-
-        if (restaurant != null) {
-            showRestaurant(restaurant);
+            // L'utilisateur choisit un restaurant parmi les résultats
+            Restaurant restaurant = pickRestaurant(restaurants);
+            if (restaurant != null) {
+                showRestaurant(restaurant);
+            }
+        } catch (SQLException e) {
+            System.err.println("Erreur lors de la recherche des restaurants : " + e.getMessage());
+            e.printStackTrace();
         }
     }
+
 
     /**
      * Affiche une liste de restaurants dont le nom de la ville contient une chaîne de caractères saisie par l'utilisateur

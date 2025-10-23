@@ -35,7 +35,6 @@ public class City implements IBusinessObject {
     public void setId(Integer id) {
         this.id = id;
     }
-
     public String getZipCode() {
         return zipCode;
     }
