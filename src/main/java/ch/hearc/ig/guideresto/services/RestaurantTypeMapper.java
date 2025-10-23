@@ -39,6 +39,25 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
         return null;
     }
 
+    public RestaurantType findByLabel(String label) {
+        String sql = "SELECT numero, libelle, description FROM TYPES_GASTRONOMIQUES WHERE libelle = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, label);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new RestaurantType(
+                            rs.getInt("numero"),
+                            rs.getString("libelle"),
+                            rs.getString("description")
+                    );
+                }
+            }
+        }catch (SQLException ex) {
+            logger.error("findByLabel SQLException: {}", ex.getMessage());
+        }
+        return null;
+    }
+
     @Override
     public Set<RestaurantType> findAll() {
         Set<RestaurantType> types = new HashSet<>();
