@@ -142,7 +142,6 @@ public class GradeMapper extends AbstractMapper<Grade> {
         }
         return false;
     }
-
     @Override
     public boolean delete(Grade grade) {
         return deleteById(grade.getId());
@@ -155,16 +154,29 @@ public class GradeMapper extends AbstractMapper<Grade> {
             System.out.println("Suppression Grade ID=" + id + " en cours...");
             stmt.setInt(1, id);
             int deleted = stmt.executeUpdate();
-            System.out.println("Nombre de lignes supprimées pour Grade : " + deleted);
+            System.out.println("Nombre de lignes supprimées pour Grade ID=" + id + " : " + deleted);
+
             if (!connection.getAutoCommit()) connection.commit();
+
+            if (deleted == 0) {
+                System.out.println("Attention : aucun grade trouvé pour l'ID " + id + ". Vérifier l'existence.");
+            }
+
             return deleted > 0;
         } catch (SQLException ex) {
-            System.err.println("Erreur delete Grade : " + ex.getMessage());
+            System.err.println("Erreur lors de la suppression du Grade ID=" + id + " : " + ex.getMessage());
             ex.printStackTrace();
-            try { connection.rollback(); } catch (SQLException e) { e.printStackTrace(); }
+            try {
+                connection.rollback();
+            } catch (SQLException e) {
+                System.err.println("Rollback échoué : " + e.getMessage());
+                e.printStackTrace();
+            }
+            return false;
         }
-        return false;
     }
+
+
 
     @Override
     protected String getSequenceQuery() {

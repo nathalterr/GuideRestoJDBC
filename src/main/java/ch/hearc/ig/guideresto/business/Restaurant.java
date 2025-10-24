@@ -18,9 +18,7 @@ public class Restaurant implements IBusinessObject {
     private Localisation address;
     private RestaurantType type;
 
-    public Restaurant() {
-        this(null, null, null, null, null, null);
-    }
+    public Restaurant() {}
 
     public Restaurant(Integer id, String name, String description, String website, String street, City city, RestaurantType type) {
         this.id = id;
@@ -34,6 +32,16 @@ public class Restaurant implements IBusinessObject {
 
     public Restaurant(Integer id, String name, String description, String website, Localisation address, RestaurantType type) {
         this.id = id;
+        this.name = name;
+        this.description = description;
+        this.website = website;
+        this.evaluations = new HashSet();
+        this.address = address;
+        this.type = type;
+    }
+
+    public Restaurant(String name, String description, String website, Localisation address, RestaurantType type) {
+
         this.name = name;
         this.description = description;
         this.website = website;

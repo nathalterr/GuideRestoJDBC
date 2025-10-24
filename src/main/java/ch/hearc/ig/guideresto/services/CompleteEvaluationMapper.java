@@ -1,6 +1,7 @@
 package ch.hearc.ig.guideresto.services;
 
 import ch.hearc.ig.guideresto.business.CompleteEvaluation;
+import ch.hearc.ig.guideresto.business.Grade;
 import ch.hearc.ig.guideresto.business.Restaurant;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import ch.hearc.ig.guideresto.services.RestaurantMapper;
@@ -139,23 +140,42 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
 
     @Override
     public boolean deleteById(int id) {
-        System.out.println("suppression en cours");
-        String sql = "DELETE FROM COMMENTAIRES WHERE numero = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            System.out.println("suppression 1");
-            stmt.setInt(1, id);
-            System.out.println("suppression 1.2");
-            int rows = stmt.executeUpdate();
-            System.out.println("suppression 1.5");
-            if (!connection.getAutoCommit()) connection.commit();
-            System.out.println("suppression 2");
-            return rows > 0;
-        } catch (SQLException e) {
-            logger.error("Erreur lors de la suppression : {}", e.getMessage());
-            System.out.println("suppression 3");
+        try {
+            // 1️⃣ Supprimer toutes les notes liées à cette évaluation
+            String deleteNotesSql = "DELETE FROM NOTES WHERE fk_comm = ?";
+            try (PreparedStatement stmt = connection.prepareStatement(deleteNotesSql)) {
+                stmt.setInt(1, id);
+                int deletedNotes = stmt.executeUpdate();
+                System.out.println("Nombre de notes supprimées pour l'évaluation ID=" + id + " : " + deletedNotes);
+            }
+
+            // 2️⃣ Supprimer le commentaire correspondant
+            String deleteCommentSql = "DELETE FROM COMMENTAIRES WHERE numero = ?";
+            try (PreparedStatement stmt = connection.prepareStatement(deleteCommentSql)) {
+                stmt.setInt(1, id);
+                int deletedComments = stmt.executeUpdate();
+                System.out.println("Nombre de commentaires supprimés pour l'évaluation ID=" + id + " : " + deletedComments);
+
+                if (!connection.getAutoCommit()) connection.commit();
+                return deletedComments > 0;
+            }
+
+        } catch (SQLException ex) {
+            logger.error("Erreur delete CompleteEvaluation: {}", ex.getMessage());
+            ex.printStackTrace();
+            try {
+                if (connection != null && !connection.getAutoCommit()) {
+                    connection.rollback();
+                }
+            } catch (SQLException rollbackEx) {
+                rollbackEx.printStackTrace();
+            }
             return false;
         }
     }
+
+
+
 
     @Override
     protected String getSequenceQuery() {

@@ -71,7 +71,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     }
 
     public Restaurant findByCity(String cityName) {
-        String sql = "SELECT r.numero, r.nom, r.description, r.site_web, r.adresse, r.fk_type, r.fk_vill FROM RESTAURANTS r INNER JOIN VILLES v ON r.fk_vill = v.id WHERE v.nom_vill = ?";
+        String sql = "SELECT r.numero, r.nom, r.description, r.site_web, r.adresse, r.fk_type, r.fk_vill FROM RESTAURANTS r INNER JOIN VILLES v ON r.fk_vill = v.numero WHERE v.nom_vill = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, cityName);
             try (ResultSet rs = stmt.executeQuery()) {

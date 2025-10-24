@@ -119,20 +119,31 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
     public boolean delete(EvaluationCriteria critere) {
         return deleteById(critere.getId());
     }
-
     @Override
     public boolean deleteById(int id) {
-        String sql = "DELETE FROM CRITERES_EVALUATION WHERE numero = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, id);
-            int rows = stmt.executeUpdate();
-            if (!connection.getAutoCommit()) connection.commit();
-            return rows > 0;
+        try {
+            // Supprimer toutes les notes liées à ce critère
+            String deleteNotesSql = "DELETE FROM NOTES WHERE fk_crit = ?";
+            try (PreparedStatement stmt = connection.prepareStatement(deleteNotesSql)) {
+                stmt.setInt(1, id);
+                stmt.executeUpdate();
+            }
+
+            // Puis supprimer le critère
+            String sql = "DELETE FROM CRITERES_EVALUATION WHERE numero = ?";
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setInt(1, id);
+                int rows = stmt.executeUpdate();
+                if (!connection.getAutoCommit()) connection.commit();
+                return rows > 0;
+            }
         } catch (SQLException e) {
-            logger.error("Erreur lors de la suppression : {}", e.getMessage());
+            logger.error("Erreur lors de la suppression du critère : {}", e.getMessage());
+            try { connection.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
             return false;
         }
     }
+
 
     @Override
     protected String getSequenceQuery() {
