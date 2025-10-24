@@ -68,33 +68,50 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
 
     @Override
     public CompleteEvaluation create(CompleteEvaluation evaluation) {
-        String seqSql = getSequenceQuery();
-        try (PreparedStatement seqStmt = connection.prepareStatement(seqSql);
-             ResultSet rs = seqStmt.executeQuery()) {
-            if (rs.next()) {
-                evaluation.setId(rs.getInt(1));
-            }
-        } catch (SQLException e) {
-            logger.error("Erreur lors de la récupération de la séquence : {}", e.getMessage());
-            return null;
-        }
+        String sql = "BEGIN INSERT INTO COMMENTAIRES (date_eval, commentaire, nom_utilisateur, fk_rest) " +
+                "VALUES (?, ?, ?, ?) RETURNING numero INTO ?; END;";
+        try (CallableStatement stmt = connection.prepareCall(sql)) {
 
-        String insertSql = "INSERT INTO COMMENTAIRES (numero, date_eval, commentaire, nom_utilisateur, fk_rest) VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(insertSql)) {
-            stmt.setInt(1, evaluation.getId());
-            stmt.setDate(2, new java.sql.Date(evaluation.getVisitDate().getTime()));
-            stmt.setString(3, evaluation.getComment());
-            stmt.setString(4, evaluation.getUsername());
-            stmt.setInt(5, evaluation.getRestaurant().getId());
+            stmt.setDate(1, new java.sql.Date(evaluation.getVisitDate().getTime()));
+            stmt.setString(2, evaluation.getComment());
+            stmt.setString(3, evaluation.getUsername());
+            stmt.setInt(4, evaluation.getRestaurant().getId());
+            stmt.registerOutParameter(5, java.sql.Types.INTEGER);
+
             stmt.executeUpdate();
 
-            if (!connection.getAutoCommit()) connection.commit();
+            int generatedId = stmt.getInt(5);
+            evaluation.setId(generatedId);
+
+            if (!connection.getAutoCommit()) {
+                connection.commit();
+            }
+
             return evaluation;
+
         } catch (SQLException e) {
-            logger.error("Erreur lors de l’insertion : {}", e.getMessage());
+            if (e.getErrorCode() == 1) { // Doublon (par ex. même utilisateur + même resto)
+                logger.info("Évaluation complète déjà existante (user: {}, resto: {}), récupération via findByUserAndRest()",
+                        evaluation.getUsername(), evaluation.getRestaurant().getId());
+                try {
+                    return findByUserAndRest(evaluation.getUsername(), evaluation.getRestaurant().getId());
+                } catch (SQLException ex) {
+                    logger.error("Erreur findByUserAndRest après doublon: {}", ex.getMessage());
+                }
+            } else {
+                logger.error("Erreur create CompleteEvaluation: {}", e.getMessage());
+            }
+
+            try {
+                connection.rollback();
+            } catch (SQLException r) {
+                logger.error("Rollback failed: {}", r.getMessage());
+            }
+
             return null;
         }
     }
+
 
     @Override
     public boolean update(CompleteEvaluation evaluation) {
@@ -175,6 +192,29 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
         }
         return evaluations;
     }
+
+    public CompleteEvaluation findByUserAndRest(String username, int restaurantId) throws SQLException {
+        String sql = "SELECT numero, date_eval, commentaire, nom_utilisateur, fk_rest " +
+                "FROM COMMENTAIRES WHERE nom_utilisateur = ? AND fk_rest = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setInt(2, restaurantId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    CompleteEvaluation eval = new CompleteEvaluation();
+                    eval.setId(rs.getInt("numero"));
+                    eval.setVisitDate(rs.getDate("date_eval"));
+                    eval.setComment(rs.getString("commentaire"));
+                    eval.setUsername(rs.getString("nom_utilisateur"));
+                    // si tu veux hydrater le restaurant :
+                    // eval.setRestaurant(new Restaurant(rs.getInt("fk_rest")));
+                    return eval;
+                }
+            }
+        }
+        return null;
+    }
+
 
 }
 

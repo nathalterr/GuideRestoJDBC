@@ -70,36 +70,50 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
 
     @Override
     public BasicEvaluation create(BasicEvaluation object) {
-        String seqSql = "SELECT SEQ_EVAL.NEXTVAL FROM dual";
-        try (PreparedStatement seqStmt = connection.prepareStatement(seqSql);
-             ResultSet rs = seqStmt.executeQuery()) {
+        String sql = "BEGIN INSERT INTO LIKES (date_eval, appreciation, adresse_ip, fk_rest) " +
+                "VALUES (?, ?, ?, ?) RETURNING numero INTO ?; END;";
+        try (CallableStatement stmt = connection.prepareCall(sql)) {
 
-            if (rs.next()) {
-                object.setId(rs.getInt(1));
-            }
-        } catch (SQLException ex) {
-            logger.error("SQLException in create (sequence): {}", ex.getMessage());
-        }
+            stmt.setDate(1, new java.sql.Date(object.getVisitDate().getTime()));
+            stmt.setString(2, (object.getLikeRestaurant() != null && object.getLikeRestaurant()) ? "Y" : "N");
+            stmt.setString(3, object.getIpAddress());
+            stmt.setInt(4, object.getRestaurant().getId());
+            stmt.registerOutParameter(5, java.sql.Types.INTEGER);
 
-        String insertSql = "INSERT INTO LIKES (numero, date_eval, appreciation, adresse_ip, fk_rest) VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(insertSql)) {
-            stmt.setInt(1, object.getId());
-            stmt.setDate(2, new java.sql.Date(object.getVisitDate().getTime()));
-            stmt.setString(3, object.getLikeRestaurant() != null && object.getLikeRestaurant() ? "Y" : "N");
-            stmt.setString(4, object.getIpAddress());
-            stmt.setInt(5, object.getRestaurant().getId());
             stmt.executeUpdate();
+
+            int generatedId = stmt.getInt(5);
+            object.setId(generatedId);
 
             if (!connection.getAutoCommit()) {
                 connection.commit();
             }
+
             return object;
-        } catch (SQLException ex) {
-            logger.error("SQLException in create: {}", ex.getMessage());
-            try { connection.rollback(); } catch (SQLException e) { e.printStackTrace(); }
+
+        } catch (SQLException e) {
+            if (e.getErrorCode() == 1) { // Doublon (ORA-00001)
+                logger.info("Évaluation basique déjà existante (IP: {}), récupération via findByIpAndRest()",
+                        object.getIpAddress());
+                try {
+                    return findByIpAndRest(object.getIpAddress(), object.getRestaurant().getId());
+                } catch (SQLException ex) {
+                    logger.error("Erreur findByIpAndRest après doublon: {}", ex.getMessage());
+                }
+            } else {
+                logger.error("Erreur create BasicEvaluation: {}", e.getMessage());
+            }
+
+            try {
+                connection.rollback();
+            } catch (SQLException r) {
+                logger.error("Rollback failed: {}", r.getMessage());
+            }
+
+            return null;
         }
-        return null;
     }
+
 
     @Override
     public boolean update(BasicEvaluation object) {
@@ -175,5 +189,28 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
         }
         return likes;
     }
+
+    public BasicEvaluation findByIpAndRest(String ip, int restaurantId) throws SQLException {
+        String sql = "SELECT numero, date_eval, appreciation, adresse_ip, fk_rest " +
+                "FROM LIKES WHERE adresse_ip = ? AND fk_rest = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, ip);
+            stmt.setInt(2, restaurantId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    BasicEvaluation eval = new BasicEvaluation();
+                    eval.setId(rs.getInt("numero"));
+                    eval.setVisitDate(rs.getDate("date_eval"));
+                    eval.setLikeRestaurant("Y".equalsIgnoreCase(rs.getString("appreciation")));
+                    eval.setIpAddress(rs.getString("adresse_ip"));
+                    // éventuellement hydrater le restaurant :
+                    // eval.setRestaurant(new Restaurant(rs.getInt("fk_rest")));
+                    return eval;
+                }
+            }
+        }
+        return null;
+    }
+
 
 }
