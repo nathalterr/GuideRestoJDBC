@@ -2,10 +2,8 @@ package ch.hearc.ig.guideresto.presentation;
 
 import ch.hearc.ig.guideresto.business.*;
 import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
-import ch.hearc.ig.guideresto.persistence.FakeItems;
-import ch.hearc.ig.guideresto.services.CityMapper;
-import ch.hearc.ig.guideresto.services.RestaurantMapper;
-import ch.hearc.ig.guideresto.services.RestaurantTypeMapper;
+//import ch.hearc.ig.guideresto.persistence.FakeItems;
+import ch.hearc.ig.guideresto.services.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -158,25 +156,17 @@ public class Application {
      * Affiche une liste de restaurants dont le nom de la ville contient une chaîne de caractères saisie par l'utilisateur
      */
     private static void searchRestaurantByCity() {
-        System.out.println("Veuillez entrer une partie du nom de la ville désirée : ");
+        System.out.print("Entrez une partie du nom de la ville : ");
         String research = readString();
-
-        // Comme on ne peut pas faire de requête SQL avec la classe FakeItems, on trie les données manuellement.
-        // Il est évident qu'une fois que vous utiliserez une base de données, il ne faut PAS garder ce système.
-        Set<Restaurant> fullList = FakeItems.getAllRestaurants();
-        Set<Restaurant> filteredList = new LinkedHashSet();
-
-        for (Restaurant currentRestaurant : fullList) { // On parcourt la liste complète et on ajoute les restaurants correspondants à la liste filtrée.
-            if (currentRestaurant.getAddress().getCity().getCityName().toUpperCase().contains(research.toUpperCase())) { // On met tout en majuscules pour ne pas tenir compte de la casse
-                filteredList.add(currentRestaurant);
-            }
+        RestaurantMapper restaurantMapper = new RestaurantMapper();
+        Set<Restaurant> allRestaurants = restaurantMapper.findAll();
+        Set<Restaurant> filtered = new LinkedHashSet<>();
+        for (Restaurant rest : allRestaurants) {
+            if (rest.getAddress().getCity().getCityName().toUpperCase().contains(research.toUpperCase()))
+                filtered.add(rest);
         }
-
-        Restaurant restaurant = pickRestaurant(filteredList);
-
-        if (restaurant != null) {
-            showRestaurant(restaurant);
-        }
+        Restaurant chosen = pickRestaurant(filtered);
+        if (chosen != null) showRestaurant(chosen);
     }
 
     /**
@@ -186,26 +176,25 @@ public class Application {
      * @return La ville sélectionnée, ou null si aucune ville n'a été choisie.
      */
     private static City pickCity(Set<City> cities) {
-        System.out.println("Voici la liste des villes possibles, veuillez entrer le NPA de la ville désirée : ");
-
-        for (City currentCity : cities) {
-            System.out.println(currentCity.getZipCode() + " " + currentCity.getCityName());
-        }
-        System.out.println("Entrez \"NEW\" pour créer une nouvelle ville");
+        System.out.println("Villes disponibles :");
+        for (City c : cities) System.out.println(c.getZipCode() + " " + c.getCityName());
+        System.out.println("Entrez le NPA, ou 'NEW' pour créer une nouvelle ville :");
         String choice = readString();
 
-        if (choice.equals("NEW")) {
-            City city = new City();
-            city.setId(1); // A modifier quand on a la connexion avec la BDD.
-            System.out.println("Veuillez entrer le NPA de la nouvelle ville : ");
-            city.setZipCode(readString());
-            System.out.println("Veuillez entrer le nom de la nouvelle ville : ");
-            city.setCityName(readString());
-            FakeItems.getCities().add(city);
-            return city;
+        CityMapper cityMapper = new CityMapper();
+        if (choice.equalsIgnoreCase("NEW")) {
+            System.out.print("Nom de la nouvelle ville : ");
+            String name = readString();
+            System.out.print("Code postal : ");
+            String zip = readString();
+            City newCity = new City(null, name, zip);
+            cityMapper.create(newCity);
+            return newCity;
+        } else {
+            return cities.stream()
+                    .filter(c -> c.getZipCode().equalsIgnoreCase(choice))
+                    .findFirst().orElse(null);
         }
-
-        return searchCityByZipCode(cities, choice);
     }
 
     /**
@@ -229,59 +218,54 @@ public class Application {
      * Si l'utilisateur sélectionne un restaurant, ce dernier lui sera affiché.
      */
     private static void searchRestaurantByType() {
-        // Comme on ne peut pas faire de requête SQL avec la classe FakeItems, on trie les données manuellement.
-        // Il est évident qu'une fois que vous utiliserez une base de données, il ne faut PAS garder ce système.
-        Set<Restaurant> fullList = FakeItems.getAllRestaurants();
-        Set<Restaurant> filteredList = new LinkedHashSet();
+        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper();
+        RestaurantMapper restaurantMapper = new RestaurantMapper();
 
-        RestaurantType chosenType = pickRestaurantType(FakeItems.getRestaurantTypes());
+        Set<RestaurantType> types = typeMapper.findAll();
+        RestaurantType chosenType = pickRestaurantType(types);
+        if (chosenType == null) return;
 
-        if (chosenType != null) { // Si l'utilisateur a sélectionné un type, sinon on ne fait rien et la liste sera vide.
-            for (Restaurant currentRestaurant : fullList) {
-                if (currentRestaurant.getType() == chosenType) {
-                    filteredList.add(currentRestaurant);
-                }
-            }
+        Set<Restaurant> all = restaurantMapper.findAll();
+        Set<Restaurant> filtered = new LinkedHashSet<>();
+        for (Restaurant rest : all) {
+            if (rest.getType().getId() == chosenType.getId())
+                filtered.add(rest);
         }
 
-        Restaurant restaurant = pickRestaurant(filteredList);
-
-        if (restaurant != null) {
-            showRestaurant(restaurant);
-        }
+        Restaurant chosen = pickRestaurant(filtered);
+        if (chosen != null) showRestaurant(chosen);
     }
 
     /**
      * Le programme demande les informations nécessaires à l'utilisateur puis crée un nouveau restaurant dans le système.
      */
     private static void addNewRestaurant() {
-        System.out.println("Vous allez ajouter un nouveau restaurant !");
-        System.out.println("Quel est son nom ?");
-        String name = readString();
-        System.out.println("Veuillez entrer une courte description : ");
-        String description = readString();
-        System.out.println("Veuillez entrer l'adresse de son site internet : ");
-        String website = readString();
-        System.out.println("Rue : ");
-        String street = readString();
-        City city = null;
+        RestaurantMapper restMapper = new RestaurantMapper();
         CityMapper cityMapper = new CityMapper();
-        do
-        { // La sélection d'une ville est obligatoire, donc l'opération se répètera tant qu'aucune ville n'est sélectionnée.
+        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper();
+
+        System.out.print("Nom du restaurant : ");
+        String name = readString();
+        System.out.print("Description : ");
+        String desc = readString();
+        System.out.print("Site web : ");
+        String website = readString();
+        System.out.print("Rue : ");
+        String street = readString();
+
+        City city = null;
+        do {
             city = pickCity(cityMapper.findAll());
         } while (city == null);
-        RestaurantType restaurantType = null;
-        do
-        { // La sélection d'un type est obligatoire, donc l'opération se répètera tant qu'aucun type n'est sélectionné.
-            restaurantType = pickRestaurantType(FakeItems.getRestaurantTypes());
-        } while (restaurantType == null);
 
-        Restaurant restaurant = new Restaurant(1, name, description, website, street, city, restaurantType);
-        city.getRestaurants().add(restaurant);
-        restaurantType.getRestaurants().add(restaurant);
-        FakeItems.getAllRestaurants().add(restaurant);
+        RestaurantType type = null;
+        do {
+            type = pickRestaurantType(typeMapper.findAll());
+        } while (type == null);
 
-        showRestaurant(restaurant);
+        Restaurant restaurant = new Restaurant(null, name, desc, website, street, city, type);
+        restMapper.create(restaurant);
+        System.out.println("✅ Restaurant ajouté avec succès !");
     }
 
     /**
@@ -432,25 +416,28 @@ public class Application {
      * @param restaurant Le restaurant à évaluer
      */
     private static void evaluateRestaurant(Restaurant restaurant) {
-        System.out.println("Merci d'évaluer ce restaurant !");
-        System.out.println("Quel est votre nom d'utilisateur ? ");
+        EvaluationCriteriaMapper criteriaMapper = new EvaluationCriteriaMapper();
+        CompleteEvaluationMapper evalMapper = new CompleteEvaluationMapper();
+        GradeMapper gradeMapper = new GradeMapper();
+
+        System.out.println("Nom d'utilisateur : ");
         String username = readString();
-        System.out.println("Quel commentaire aimeriez-vous publier ?");
+        System.out.println("Commentaire : ");
         String comment = readString();
 
-        CompleteEvaluation eval = new CompleteEvaluation(1, new Date(), restaurant, comment, username);
-        restaurant.getEvaluations().add(eval);
+        CompleteEvaluation eval = new CompleteEvaluation(null, new Date(), restaurant, comment, username);
+        evalMapper.create(eval);
 
-        Grade grade; // L'utilisateur va saisir une note pour chaque critère existant.
-        System.out.println("Veuillez svp donner une note entre 1 et 5 pour chacun de ces critères : ");
-        for (EvaluationCriteria currentCriteria : FakeItems.getEvaluationCriterias()) {
-            System.out.println(currentCriteria.getName() + " : " + currentCriteria.getDescription());
-            Integer note = readInt();
-            grade = new Grade(1, note, eval, currentCriteria);
+        Set<EvaluationCriteria> criteres = criteriaMapper.findAll();
+        for (EvaluationCriteria crit : criteres) {
+            System.out.print(crit.getName() + " (1-5) : ");
+            int note = readInt();
+            Grade grade = new Grade(null, note, eval, crit);
+            gradeMapper.create(grade);
             eval.getGrades().add(grade);
         }
 
-        System.out.println("Votre évaluation a bien été enregistrée, merci !");
+        System.out.println("✅ Évaluation enregistrée avec succès !");
     }
 
     /**
@@ -469,8 +456,8 @@ public class Application {
         System.out.println("Nouveau site web : ");
         restaurant.setWebsite(readString());
         System.out.println("Nouveau type de restaurant : ");
-
-        RestaurantType newType = pickRestaurantType(FakeItems.getRestaurantTypes());
+        RestaurantTypeMapper rtm = new RestaurantTypeMapper();
+        RestaurantType newType = pickRestaurantType(rtm.findAll());
         if (newType != null && newType != restaurant.getType()) {
             restaurant.getType().getRestaurants().remove(restaurant); // Il faut d'abord supprimer notre restaurant puisque le type va peut-être changer
             restaurant.setType(newType);
