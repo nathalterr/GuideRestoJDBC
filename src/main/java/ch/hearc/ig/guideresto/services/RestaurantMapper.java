@@ -5,15 +5,14 @@ import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 
 import java.sql.*;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
 
 public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     private Connection connection;
+    private static final Map<Integer, Restaurant> identityMap = new HashMap<>();
 
     public RestaurantMapper() {
         this.connection = getConnection();
@@ -21,15 +20,22 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     @Override
     public Restaurant findById(int id) {
+        // 🧩 2️⃣ Vérifier si le Restaurant est déjà dans la map
+        if (identityMap.containsKey(id)) {
+            logger.info("⚡ Restaurant {} récupéré depuis l'Identity Map", id);
+            return identityMap.get(id);
+        }
+
         String sql = "SELECT numero, nom, description, site_web, adresse, fk_type, fk_vill FROM RESTAURANTS WHERE numero = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    // On récupère le type et la ville via leurs mappers
+                    // On récupère les entités associées via leurs mappers
                     RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
                     City city = new CityMapper().findById(rs.getInt("fk_vill"));
-                    return new Restaurant(
+
+                    Restaurant restaurant = new Restaurant(
                             rs.getInt("numero"),
                             rs.getString("nom"),
                             rs.getString("description"),
@@ -38,13 +44,21 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                             city,
                             type
                     );
+
+                    // 💾 3️⃣ Ajouter le restaurant à la map après création
+                    identityMap.put(restaurant.getId(), restaurant);
+                    logger.info("✅ Restaurant {} ajouté à l'Identity Map", restaurant.getId());
+
+                    return restaurant;
                 }
             }
         } catch (SQLException e) {
             logger.error("Erreur findById Restaurant: {}", e.getMessage());
         }
+
         return null;
     }
+
 
     public Set<Restaurant> findByName(String partialName) throws SQLException {
         Set<Restaurant> restaurants = new LinkedHashSet<>();
@@ -54,85 +68,140 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             stmt.setString(1, "%" + partialName + "%"); // "contient"
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    City city = new CityMapper().findById(rs.getInt("fk_vill"));
-                    RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
-                    restaurants.add(new Restaurant(
-                            rs.getInt("numero"),
-                            rs.getString("nom"),
-                            rs.getString("description"),
-                            rs.getString("site_web"),
-                            new Localisation(rs.getString("adresse"), city),
-                            type
-                    ));
+                    int id = rs.getInt("numero");
+
+                    // 🔹 Vérifier d'abord le cache
+                    Restaurant restaurant = identityMap.get(id);
+                    if (restaurant == null) {
+                        // Non trouvé dans le cache → créer un nouvel objet
+                        City city = new CityMapper().findById(rs.getInt("fk_vill"));
+                        RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
+                        restaurant = new Restaurant(
+                                id,
+                                rs.getString("nom"),
+                                rs.getString("description"),
+                                rs.getString("site_web"),
+                                new Localisation(rs.getString("adresse"), city),
+                                type
+                        );
+
+                        // Ajouter dans le cache
+                        identityMap.put(id, restaurant);
+                    }
+
+                    // Ajouter au résultat
+                    restaurants.add(restaurant);
                 }
             }
         }
+
         return restaurants;
     }
 
-    public Restaurant findByCity(String cityName) {
-        String sql = "SELECT r.numero, r.nom, r.description, r.site_web, r.adresse, r.fk_type, r.fk_vill FROM RESTAURANTS r INNER JOIN VILLES v ON r.fk_vill = v.numero WHERE v.nom_vill = ?";
+
+    public Set<Restaurant> findByCity(String cityName) throws SQLException {
+        Set<Restaurant> restaurants = new LinkedHashSet<>();
+        String sql = "SELECT r.numero, r.nom, r.description, r.site_web, r.adresse, r.fk_type, r.fk_vill " +
+                "FROM RESTAURANTS r INNER JOIN VILLES v ON r.fk_vill = v.numero " +
+                "WHERE v.nom_ville = ?";  // <- corrigé ici
+
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, cityName);
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
-                    City city = new CityMapper().findById(rs.getInt("fk_vill"));
-                    return new Restaurant(
-                            rs.getInt("numero"),
-                            rs.getString("nom"),
-                            rs.getString("description"),
-                            rs.getString("site_web"),
-                            rs.getString("adresse"),
-                            city,
-                            type
-                    );
+                while (rs.next()) {
+                    int id = rs.getInt("numero");
+
+                    // Vérifier le cache
+                    Restaurant restaurant = identityMap.get(id);
+                    if (restaurant == null) {
+                        RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
+                        City city = new CityMapper().findById(rs.getInt("fk_vill"));
+                        restaurant = new Restaurant(
+                                id,
+                                rs.getString("nom"),
+                                rs.getString("description"),
+                                rs.getString("site_web"),
+                                rs.getString("adresse"),
+                                city,
+                                type
+                        );
+                        identityMap.put(id, restaurant);
+                    }
+
+                    restaurants.add(restaurant);
                 }
-            }catch (SQLException e) {
-                logger.error("Erreur findByCity Restaurant: {}", e.getMessage());
             }
-            return null;
-            } catch (SQLException e) {
-            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            logger.error("Erreur findByCity Restaurant: {}", e.getMessage());
+            throw e;
         }
+
+        return restaurants;
     }
 
-    public Restaurant findByRestaurantType(String label) throws SQLException {
-        String sql = "SELECT r.numero, r.nom, r.description, r.site_web, r.adresse, r.fk_type, r.fk_vill FROM RESTAURANTS r INNER JOIN TYPES_GASTRONOMIQUES t ON r.fk_type = t.numero WHERE t.libelle = ?";
+
+
+
+
+
+    public Set<Restaurant> findByRestaurantType(String label) throws SQLException {
+        Set<Restaurant> restaurants = new LinkedHashSet<>();
+        String sql = "SELECT r.numero, r.nom, r.description, r.site_web, r.adresse, r.fk_type, r.fk_vill " +
+                "FROM RESTAURANTS r INNER JOIN TYPES_GASTRONOMIQUES t ON r.fk_type = t.numero WHERE t.libelle = ?";
+
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, label);
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
-                    City city = new CityMapper().findById(rs.getInt("fk_vill"));
-                    return new Restaurant(
-                            rs.getInt("numero"),
-                            rs.getString("nom"),
-                            rs.getString("description"),
-                            rs.getString("site_web"),
-                            rs.getString("adresse"),
-                            city,
-                            type
-                    );
+                while (rs.next()) {
+                    int id = rs.getInt("numero");
+
+                    // 🔹 Vérifier le cache
+                    Restaurant restaurant = identityMap.get(id);
+                    if (restaurant == null) {
+                        RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
+                        City city = new CityMapper().findById(rs.getInt("fk_vill"));
+                        restaurant = new Restaurant(
+                                id,
+                                rs.getString("nom"),
+                                rs.getString("description"),
+                                rs.getString("site_web"),
+                                rs.getString("adresse"),
+                                city,
+                                type
+                        );
+
+                        // Ajouter dans le cache
+                        identityMap.put(id, restaurant);
+                    }
+
+                    restaurants.add(restaurant);
                 }
-            } catch (SQLException e) {
-                logger.error("Erreur findByRestaurantType Restaurant: {}", e.getMessage());
             }
-            return null;
+        } catch (SQLException e) {
+            logger.error("Erreur findByRestaurantType Restaurant: {}", e.getMessage());
+            throw e;
         }
-        }
+
+        return restaurants;
+    }
+
 
     @Override
     public Set<Restaurant> findAll() {
         Set<Restaurant> restaurants = new HashSet<>();
         String sql = "SELECT numero, nom, description, site_web, adresse, fk_type, fk_vill FROM RESTAURANTS";
+
+        // Option : vider le cache pour refléter exactement la base
+        identityMap.clear();
+
         try (PreparedStatement stmt = connection.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
+                int id = rs.getInt("numero");
                 RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
                 City city = new CityMapper().findById(rs.getInt("fk_vill"));
-                Restaurant r = new Restaurant(
-                        rs.getInt("numero"),
+                Restaurant restaurant = new Restaurant(
+                        id,
                         rs.getString("nom"),
                         rs.getString("description"),
                         rs.getString("site_web"),
@@ -140,7 +209,9 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                         city,
                         type
                 );
-                restaurants.add(r);
+                // Ajouter dans le cache
+                identityMap.put(id, restaurant);
+                restaurants.add(restaurant);
             }
         } catch (SQLException e) {
             logger.error("Erreur findAll Restaurant: {}", e.getMessage());
@@ -167,6 +238,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             }
 
             if (!connection.getAutoCommit()) connection.commit();
+            identityMap.put(restaurant.getId(), restaurant);
             return restaurant;
         } catch (SQLException e) {
             logger.error("Erreur create Restaurant: {}", e.getMessage());
@@ -192,18 +264,12 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             if (!connection.getAutoCommit()) connection.commit();
 
             System.out.println("Restaurant mis à jour (" + rows + " ligne(s) affectée(s))");
+            identityMap.put(restaurant.getId(), restaurant);
             return rows > 0;
         } catch (SQLException e) {
             logger.error("Erreur update Restaurant: {}", e.getMessage());
             try { connection.rollback(); } catch (SQLException ex) { logger.error("Rollback failed: {}", ex.getMessage()); }
-            System.out.println("frere wtf");
-            System.out.println("frere wtf");
-            System.out.println("frere wtf");
-            System.out.println("frere wtf");
-            System.out.println("frere wtf");System.out.println("frere wtf");
-
             return false;
-
         }
     }
 
@@ -230,8 +296,14 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                 basicEvalMapper.delete(like);
             }
 
-            // 3️⃣ Supprimer le restaurant lui-même
-            return deleteById(restId);
+            boolean deleted = deleteById(restId);
+
+            // 🔹 Retirer du cache
+            if (deleted) {
+                removeFromCache(restId);
+            }
+
+            return deleted;
 
         } catch (Exception ex) {
             logger.error("Erreur delete restaurant complet : {}", ex.getMessage());
@@ -247,6 +319,12 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             stmt.setInt(1, id);
             int rows = stmt.executeUpdate();
             if (!connection.getAutoCommit()) connection.commit();
+
+            // 🔹 Retirer du cache si la suppression a réussi
+            if (rows > 0) {
+                removeFromCache(id);
+            }
+
             return rows > 0;
         } catch (SQLException e) {
             logger.error("Erreur delete Restaurant: {}", e.getMessage());
@@ -254,6 +332,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             return false;
         }
     }
+
 
     @Override
     protected String getSequenceQuery() {
@@ -289,8 +368,17 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             stmt.setInt(3, restaurant.getId());
             int rows = stmt.executeUpdate();
             if (!connection.getAutoCommit()) connection.commit();
+            identityMap.put(restaurant.getId(), restaurant);
             return rows > 0;
         }
+    }
+
+    public void removeFromCache(int id) {
+        identityMap.remove(id);
+    }
+
+    public void clearCache() {
+        identityMap.clear();
     }
 
 }
