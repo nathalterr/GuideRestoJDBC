@@ -168,7 +168,6 @@ public class Application {
         Restaurant chosen = pickRestaurant(filtered);
         if (chosen != null) showRestaurant(chosen);
     }
-
     /**
      * L'utilisateur choisit une ville parmi celles présentes dans le système.
      *
