@@ -449,23 +449,58 @@ public class Application {
     private static void editRestaurant(Restaurant restaurant) {
         System.out.println("Edition d'un restaurant !");
 
-        System.out.println("Nouveau nom : ");
+        // 🔹 1. Nom, description, site web
+        System.out.print("Nouveau nom : ");
         restaurant.setName(readString());
-        System.out.println("Nouvelle description : ");
+
+        System.out.print("Nouvelle description : ");
         restaurant.setDescription(readString());
-        System.out.println("Nouveau site web : ");
+
+        System.out.print("Nouveau site web : ");
         restaurant.setWebsite(readString());
-        System.out.println("Nouveau type de restaurant : ");
+
+        // 🔹 2. Type de restaurant
         RestaurantTypeMapper rtm = new RestaurantTypeMapper();
         RestaurantType newType = pickRestaurantType(rtm.findAll());
         if (newType != null && newType != restaurant.getType()) {
-            restaurant.getType().getRestaurants().remove(restaurant); // Il faut d'abord supprimer notre restaurant puisque le type va peut-être changer
             restaurant.setType(newType);
-            newType.getRestaurants().add(restaurant);
         }
 
-        System.out.println("Merci, le restaurant a bien été modifié !");
+        // 🔹 3. Adresse (rue + ville)
+        System.out.print("Nouvelle rue : ");
+        String newStreet = readString();
+
+        System.out.print("Nom de la ville : ");
+        String cityName = readString();
+
+        CityMapper cityMapper = new CityMapper();
+        try {
+            City dbCity = cityMapper.findByName(cityName);
+            if (dbCity == null) {
+                System.out.print("Code postal pour la nouvelle ville : ");
+                String postalCode = readString();
+
+                dbCity = new City(null, cityName, postalCode);
+                cityMapper.create(dbCity);
+                System.out.println("Nouvelle ville créée : " + dbCity.getCityName());
+            }
+            restaurant.getAddress().setStreet(newStreet);
+            restaurant.getAddress().setCity(dbCity);
+
+            // 🔹 4. Mise à jour en base
+            RestaurantMapper restaurantMapper = new RestaurantMapper();
+            boolean updated = restaurantMapper.update(restaurant);
+            if (updated) {
+                System.out.println("Restaurant mis à jour avec succès !");
+            } else {
+                System.out.println("Erreur lors de la mise à jour du restaurant.");
+            }
+        } catch (SQLException e) {
+            System.err.println("Erreur lors de la mise à jour de l'adresse : " + e.getMessage());
+            e.printStackTrace();
+        }
     }
+
 
     /**
      * Permet à l'utilisateur de mettre à jour l'adresse du restaurant.

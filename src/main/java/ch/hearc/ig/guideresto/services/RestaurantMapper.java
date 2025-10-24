@@ -177,24 +177,36 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     @Override
     public boolean update(Restaurant restaurant) {
-        String sql = "UPDATE RESTAURANTS SET nom = ?, description = ?, site_web = ?, adresse = ?, fk_type = ?, fk_vill = ? WHERE numero = ?";
+        System.out.println("tqa mere la pzte en fait");
+        String sql = "UPDATE RESTAURANTS SET nom = ?, description = ?, site_web = ?, fk_type = ? WHERE numero = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, restaurant.getName());
             stmt.setString(2, restaurant.getDescription());
             stmt.setString(3, restaurant.getWebsite());
-            stmt.setString(4, restaurant.getAddress().getStreet());
-            stmt.setInt(5, restaurant.getType().getId());
-            stmt.setInt(6, restaurant.getAddress().getCity().getId());
-            stmt.setInt(7, restaurant.getId());
+            stmt.setInt(4, restaurant.getType().getId());
+            stmt.setInt(5, restaurant.getId());
+            System.out.println("test");
+            updateAddress(restaurant, restaurant.getAddress().getStreet(), restaurant.getAddress().getCity() );
+
             int rows = stmt.executeUpdate();
             if (!connection.getAutoCommit()) connection.commit();
+
+            System.out.println("Restaurant mis à jour (" + rows + " ligne(s) affectée(s))");
             return rows > 0;
         } catch (SQLException e) {
             logger.error("Erreur update Restaurant: {}", e.getMessage());
             try { connection.rollback(); } catch (SQLException ex) { logger.error("Rollback failed: {}", ex.getMessage()); }
+            System.out.println("frere wtf");
+            System.out.println("frere wtf");
+            System.out.println("frere wtf");
+            System.out.println("frere wtf");
+            System.out.println("frere wtf");System.out.println("frere wtf");
+
             return false;
+
         }
     }
+
 
     @Override
     public boolean delete(Restaurant restaurant) {
