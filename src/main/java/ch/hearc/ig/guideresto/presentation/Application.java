@@ -272,36 +272,66 @@ public class Application {
      *
      * @param restaurant Le restaurant à afficher
      */
+
     private static void showRestaurant(Restaurant restaurant) {
         System.out.println("Affichage d'un restaurant : ");
         StringBuilder sb = new StringBuilder();
-        sb.append(restaurant.getName()).append("\n");
-        sb.append(restaurant.getDescription()).append("\n");
-        sb.append(restaurant.getType().getLabel()).append("\n");
-        sb.append(restaurant.getWebsite()).append("\n");
-        sb.append(restaurant.getAddress().getStreet()).append(", ");
-        sb.append(restaurant.getAddress().getCity().getZipCode()).append(" ").append(restaurant.getAddress().getCity().getCityName()).append("\n");
-        sb.append("Nombre de likes : ").append(countLikes(restaurant.getEvaluations(), true)).append("\n");
-        sb.append("Nombre de dislikes : ").append(countLikes(restaurant.getEvaluations(), false)).append("\n");
-        sb.append("\nEvaluations reçues : ").append("\n");
 
-        String text;
-        for (Evaluation currentEval : restaurant.getEvaluations()) {
-            text = getCompleteEvaluationDescription(currentEval);
-            if (text != null) { // On va recevoir des null pour les BasicEvaluation donc on ne les traite pas !
-                sb.append(text).append("\n");
+        // 🔹 Infos générales
+        sb.append(restaurant.getName()).append("\n")
+                .append(restaurant.getDescription()).append("\n")
+                .append(restaurant.getType().getLabel()).append("\n")
+                .append(restaurant.getWebsite()).append("\n")
+                .append(restaurant.getAddress().getStreet()).append(", ")
+                .append(restaurant.getAddress().getCity().getZipCode()).append(" ")
+                .append(restaurant.getAddress().getCity().getCityName()).append("\n");
+
+        // 🔹 BasicEvaluations
+        BasicEvaluationMapper bem = new BasicEvaluationMapper();
+        Set<BasicEvaluation> basicEvalsFromDB = bem.findByRestaurant(restaurant);
+
+        // 🔹 CompleteEvaluations avec leurs grades
+        CompleteEvaluationMapper cem = new CompleteEvaluationMapper();
+        Set<CompleteEvaluation> completeEvalsFromDB = cem.findByRestaurant(restaurant);
+
+        // 🔹 Mettre à jour les évaluations du restaurant
+        restaurant.getEvaluations().removeIf(e -> e instanceof CompleteEvaluation);
+        restaurant.getEvaluations().addAll(completeEvalsFromDB);
+
+        // 🔹 Likes/dislikes
+        sb.append("Nombre de likes : ").append(countLikes(basicEvalsFromDB, true)).append("\n")
+                .append("Nombre de dislikes : ").append(countLikes(basicEvalsFromDB, false)).append("\n");
+
+        // 🔹 Afficher les CompleteEvaluations
+        sb.append("\nÉvaluations complètes reçues :\n");
+        for (Evaluation eval : restaurant.getEvaluations()) {
+            if (eval instanceof CompleteEvaluation ce) {
+                sb.append("Evaluation de : ").append(ce.getUsername()).append("\n")
+                        .append("Commentaire : ").append(ce.getComment()).append("\n");
+
+                if (ce.getGrades().isEmpty()) {
+                    sb.append("Aucune note disponible\n");
+                } else {
+                    for (Grade g : ce.getGrades()) {
+                        sb.append(g.getCriteria().getName())
+                                .append(" : ").append(g.getGrade()).append("/5\n");
+                    }
+                }
+                sb.append("\n"); // séparateur
             }
         }
 
         System.out.println(sb);
 
+        // 🔹 Menu actions
         int choice;
-        do { // Tant que l'utilisateur n'entre pas 0 ou 6, on lui propose à nouveau les actions
+        do {
             showRestaurantMenu();
             choice = readInt();
             proceedRestaurantMenu(choice, restaurant);
-        } while (choice != 0 && choice != 6); // 6 car le restaurant est alors supprimé...
+        } while (choice != 0 && choice != 6);
     }
+
 
     /**
      * Parcourt la liste et compte le nombre d'évaluations basiques positives ou négatives en fonction du paramètre likeRestaurant
@@ -310,7 +340,7 @@ public class Application {
      * @param likeRestaurant Veut-on le nombre d'évaluations positives ou négatives ?
      * @return Le nombre d'évaluations positives ou négatives trouvées
      */
-    private static int countLikes(Set<Evaluation> evaluations, Boolean likeRestaurant) {
+    private static int countLikes(Set<BasicEvaluation> evaluations, Boolean likeRestaurant) {
         int count = 0;
         for (Evaluation currentEval : evaluations) {
             if (currentEval instanceof BasicEvaluation && ((BasicEvaluation) currentEval).getLikeRestaurant() == likeRestaurant) {
@@ -406,6 +436,9 @@ public class Application {
         }
         BasicEvaluation eval = new BasicEvaluation(1, new Date(), restaurant, like, ipAddress);
         restaurant.getEvaluations().add(eval);
+        BasicEvaluationMapper BEM =  new BasicEvaluationMapper();
+        BEM.create(eval);
+
         System.out.println("Votre vote a été pris en compte !");
     }
 
@@ -419,25 +452,38 @@ public class Application {
         CompleteEvaluationMapper evalMapper = new CompleteEvaluationMapper();
         GradeMapper gradeMapper = new GradeMapper();
 
-        System.out.println("Nom d'utilisateur : ");
+        System.out.print("Nom d'utilisateur : ");
         String username = readString();
-        System.out.println("Commentaire : ");
+
+        System.out.print("Commentaire : ");
         String comment = readString();
 
+        // 🔹 1. Créer l'évaluation en mémoire
         CompleteEvaluation eval = new CompleteEvaluation(null, new Date(), restaurant, comment, username);
-        evalMapper.create(eval);
 
+        // 🔹 2. Ajouter les notes à l'évaluation
         Set<EvaluationCriteria> criteres = criteriaMapper.findAll();
         for (EvaluationCriteria crit : criteres) {
-            System.out.print(crit.getName() + " (1-5) : ");
-            int note = readInt();
+            int note;
+            do {
+                System.out.print(crit.getName() + " (1-5) : ");
+                note = readInt();
+            } while (note < 1 || note > 5); // Validation simple
             Grade grade = new Grade(null, note, eval, crit);
-            gradeMapper.create(grade);
             eval.getGrades().add(grade);
+        }
+
+        // 🔹 3. Persister l'évaluation et récupérer son ID
+        evalMapper.create(eval);
+
+        // 🔹 4. Persister chaque grade lié à cette évaluation
+        for (Grade g : eval.getGrades()) {
+            gradeMapper.create(g);
         }
 
         System.out.println("✅ Évaluation enregistrée avec succès !");
     }
+
 
     /**
      * Force l'utilisateur à saisir à nouveau toutes les informations du restaurant (sauf la clé primaire) pour le mettre à jour.
@@ -479,7 +525,7 @@ public class Application {
                 System.out.print("Code postal pour la nouvelle ville : ");
                 String postalCode = readString();
 
-                dbCity = new City(null, cityName, postalCode);
+                dbCity = new City(null, postalCode, cityName);
                 cityMapper.create(dbCity);
                 System.out.println("Nouvelle ville créée : " + dbCity.getCityName());
             }

@@ -31,7 +31,7 @@ public class Restaurant implements IBusinessObject {
     }
 
     public Restaurant(Integer id, String name, String description, String website, Localisation address, RestaurantType type) {
-        this.id = id;
+        this.id = null; //permettre à la création, mais il faut que la base face elle même l'attribution avec le seq.nextVal()
         this.name = name;
         this.description = description;
         this.website = website;
