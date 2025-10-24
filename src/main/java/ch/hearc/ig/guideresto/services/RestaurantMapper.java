@@ -5,27 +5,29 @@ import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 
 import java.sql.*;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 
+import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.connection;
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
 
 public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     private Connection connection;
 
+    private Map<Long, Restaurant> cache = new HashMap<>();
+
     public RestaurantMapper() {
         this.connection = getConnection();
     }
 
     @Override
-    public Restaurant findById(int id) {
-        String sql = "SELECT numero, nom, description, site_web, adresse, fk_type, fk_vill FROM RESTAURANTS WHERE numero = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
+    public Restaurant findById(Long pk) {
+        if (!this.cache.containsKey(pk)) {
+            String sql = "SELECT numero, nom, description, site_web, adresse, fk_type, fk_vill FROM RESTAURANTS WHERE numero = ?";
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setInt(1, id);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) ;
                     // On récupère le type et la ville via leurs mappers
                     RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
                     City city = new CityMapper().findById(rs.getInt("fk_vill"));
@@ -40,34 +42,10 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                     );
                 }
             }
-        } catch (SQLException e) {
+        } catch(SQLException e){
             logger.error("Erreur findById Restaurant: {}", e.getMessage());
         }
-        return null;
-    }
-
-    public Set<Restaurant> findByName(String partialName) throws SQLException {
-        Set<Restaurant> restaurants = new LinkedHashSet<>();
-        String sql = "SELECT numero, nom, description, site_web, fk_vill, fk_type, adresse FROM RESTAURANTS WHERE LOWER(nom) LIKE LOWER(?)";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, "%" + partialName + "%"); // "contient"
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    City city = new CityMapper().findById(rs.getInt("fk_vill"));
-                    RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
-                    restaurants.add(new Restaurant(
-                            rs.getInt("numero"),
-                            rs.getString("nom"),
-                            rs.getString("description"),
-                            rs.getString("site_web"),
-                            new Localisation(rs.getString("adresse"), city),
-                            type
-                    ));
-                }
-            }
-        }
-        return restaurants;
+        return this.cache.get(pk);
     }
 
     public Restaurant findByCity(String cityName) {
@@ -92,7 +70,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                 logger.error("Erreur findByCity Restaurant: {}", e.getMessage());
             }
             return null;
-            } catch (SQLException e) {
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
@@ -120,7 +98,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             }
             return null;
         }
-        }
+    }
 
     @Override
     public Set<Restaurant> findAll() {
@@ -294,3 +272,10 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     }
 
 }
+
+
+
+}
+
+
+
