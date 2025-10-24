@@ -11,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.sql.*;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
@@ -234,6 +235,38 @@ public class GradeMapper extends AbstractMapper<Grade> {
             }
         }
         return null;
+    }
+
+    public Set<Grade> findByEvaluation(CompleteEvaluation eval) {
+        Set<Grade> grades = new LinkedHashSet<>();
+        String sql = """
+                     SELECT g.numero, g.note, g.fk_crit
+                     FROM NOTES g
+                     WHERE g.fk_comm = ?
+                     """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, eval.getId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                EvaluationCriteriaMapper critMapper = new EvaluationCriteriaMapper();
+                while (rs.next()) {
+                    int gradeId = rs.getInt("numero");
+                    int noteValue = rs.getInt("note");
+                    int critId = rs.getInt("fk_crit");
+
+                    EvaluationCriteria crit = critMapper.findById(critId);
+                    if (crit != null) {
+                        Grade grade = new Grade(gradeId, noteValue, eval, crit);
+                        grades.add(grade);
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            System.err.println("Erreur findByEvaluation GradeMapper : " + ex.getMessage());
+            ex.printStackTrace();
+        }
+
+        return grades;
     }
 
 

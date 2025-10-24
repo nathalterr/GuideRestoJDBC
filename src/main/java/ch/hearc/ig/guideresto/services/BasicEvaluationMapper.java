@@ -70,20 +70,27 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
 
     @Override
     public BasicEvaluation create(BasicEvaluation object) {
-        String sql = "BEGIN INSERT INTO LIKES (date_eval, appreciation, adresse_ip, fk_rest) " +
-                "VALUES (?, ?, ?, ?) RETURNING numero INTO ?; END;";
-        try (CallableStatement stmt = connection.prepareCall(sql)) {
+        String sql = "INSERT INTO LIKES (date_eval, appreciation, adresse_ip, fk_rest) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement stmt = connection.prepareStatement(sql, new String[]{"numero"})) {
 
             stmt.setDate(1, new java.sql.Date(object.getVisitDate().getTime()));
             stmt.setString(2, (object.getLikeRestaurant() != null && object.getLikeRestaurant()) ? "Y" : "N");
             stmt.setString(3, object.getIpAddress());
             stmt.setInt(4, object.getRestaurant().getId());
-            stmt.registerOutParameter(5, java.sql.Types.INTEGER);
 
-            stmt.executeUpdate();
+            int affectedRows = stmt.executeUpdate();
 
-            int generatedId = stmt.getInt(5);
-            object.setId(generatedId);
+            if (affectedRows == 0) {
+                throw new SQLException("La création de l'évaluation basique a échoué, aucune ligne insérée.");
+            }
+
+            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    object.setId(generatedKeys.getInt(1));
+                } else {
+                    throw new SQLException("La récupération de l'ID de l'évaluation basique a échoué.");
+                }
+            }
 
             if (!connection.getAutoCommit()) {
                 connection.commit();
@@ -92,24 +99,8 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
             return object;
 
         } catch (SQLException e) {
-            if (e.getErrorCode() == 1) { // Doublon (ORA-00001)
-                logger.info("Évaluation basique déjà existante (IP: {}), récupération via findByIpAndRest()",
-                        object.getIpAddress());
-                try {
-                    return findByIpAndRest(object.getIpAddress(), object.getRestaurant().getId());
-                } catch (SQLException ex) {
-                    logger.error("Erreur findByIpAndRest après doublon: {}", ex.getMessage());
-                }
-            } else {
-                logger.error("Erreur create BasicEvaluation: {}", e.getMessage());
-            }
-
-            try {
-                connection.rollback();
-            } catch (SQLException r) {
-                logger.error("Rollback failed: {}", r.getMessage());
-            }
-
+            logger.error("Erreur create BasicEvaluation: {}", e.getMessage());
+            try { connection.rollback(); } catch (SQLException r) { logger.error("Rollback failed: {}", r.getMessage()); }
             return null;
         }
     }

@@ -8,6 +8,7 @@ import ch.hearc.ig.guideresto.services.RestaurantMapper;
 import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.LinkedHashSet;
 
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
 
@@ -192,24 +193,33 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
         return "SELECT COUNT(*) FROM COMMENTAIRES";
     }
     public Set<CompleteEvaluation> findByRestaurant(Restaurant restaurant) {
-        Set<CompleteEvaluation> evaluations = new HashSet<>();
-        String sql = "SELECT numero, date_eval, commentaire, nom_utilisateur, fk_rest FROM COMMENTAIRES WHERE fk_rest = ?";
+        Set<CompleteEvaluation> evaluations = new LinkedHashSet<>();
+        String sql = "SELECT numero, date_eval, commentaire, nom_utilisateur FROM COMMENTAIRES WHERE fk_rest = ?";
+
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, restaurant.getId());
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    evaluations.add(new CompleteEvaluation(
+                    CompleteEvaluation eval = new CompleteEvaluation(
                             rs.getInt("numero"),
                             rs.getDate("date_eval"),
                             restaurant,
                             rs.getString("commentaire"),
                             rs.getString("nom_utilisateur")
-                    ));
+                    );
+
+                    // 🔹 Charger les grades pour cette évaluation
+                    GradeMapper gradeMapper = new GradeMapper();
+                    eval.getGrades().addAll(gradeMapper.findByEvaluation(eval));
+
+                    evaluations.add(eval);
                 }
             }
         } catch (SQLException ex) {
-            logger.error("Erreur findByRestaurant CompleteEvaluation : {}", ex.getMessage());
+            System.err.println("Erreur findByRestaurant CompleteEvaluation : " + ex.getMessage());
+            ex.printStackTrace();
         }
+
         return evaluations;
     }
 
