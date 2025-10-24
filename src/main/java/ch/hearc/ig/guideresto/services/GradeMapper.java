@@ -84,25 +84,46 @@ public class GradeMapper extends AbstractMapper<Grade> {
 
     @Override
     public Grade create(Grade grade) {
-        String sql = "INSERT INTO NOTES (numero, note, fk_comm, fk_crit) VALUES (?, ?, ?, ?)";
-        Integer newId = getSequenceValue();
-        grade.setId(newId);
+        String sql = "BEGIN INSERT INTO NOTES (note, fk_comm, fk_crit) " +
+                "VALUES (?, ?, ?) RETURNING numero INTO ?; END;";
 
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, newId);
-            stmt.setInt(2, grade.getGrade());
-            stmt.setInt(3, grade.getEvaluation().getId());
-            stmt.setInt(4, grade.getCriteria().getId());
+        try (CallableStatement stmt = connection.prepareCall(sql)) {
+            stmt.setInt(1, grade.getGrade());
+            stmt.setInt(2, grade.getEvaluation().getId());
+            stmt.setInt(3, grade.getCriteria().getId());
+            stmt.registerOutParameter(4, java.sql.Types.INTEGER);
+
             stmt.executeUpdate();
 
-            if (!connection.getAutoCommit()) connection.commit();
+            int generatedId = stmt.getInt(4);
+            grade.setId(generatedId);
 
-            logger.info("Grade inséré avec ID {}", newId);
+            if (!connection.getAutoCommit()) {
+                connection.commit();
+            }
+
             return grade;
-        } catch (SQLException ex) {
-            logger.error("Erreur create Grade : {}", ex.getMessage());
+        } catch (SQLException e) {
+            if (e.getErrorCode() == 1) { // Doublon
+                logger.info("Note déjà existante pour critère {} et évaluation {}, récupération via findByEvalAndCrit()",
+                        grade.getEvaluation().getId(), grade.getCriteria().getId());
+                try {
+                    return findByEvalAndCrit(grade.getEvaluation().getId(), grade.getCriteria().getId());
+                } catch (SQLException ex) {
+                    logger.error("Erreur findByEvalAndCrit après doublon: {}", ex.getMessage());
+                }
+            } else {
+                logger.error("Erreur create Grade: {}", e.getMessage());
+            }
+
+            try {
+                connection.rollback();
+            } catch (SQLException r) {
+                logger.error("Rollback failed: {}", r.getMessage());
+            }
+
+            return null;
         }
-        return null;
     }
 
     @Override
@@ -181,5 +202,27 @@ public class GradeMapper extends AbstractMapper<Grade> {
         }
         return grades;
     }
+    public Grade findByEvalAndCrit(int evalId, int critId) throws SQLException {
+        String sql = "SELECT numero, note, fk_comm, fk_crit FROM NOTES WHERE fk_comm = ? AND fk_crit = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, evalId);
+            stmt.setInt(2, critId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Grade grade = new Grade();
+                    grade.setId(rs.getInt("numero"));
+                    grade.setGrade(rs.getInt("note"));
+
+                    // si tu veux, tu peux hydrater les sous-objets
+                    // grade.setEvaluation(new CompleteEvaluation(rs.getInt("fk_comm")));
+                    // grade.setCriteria(new EvaluationCriteria(rs.getInt("fk_crit")));
+
+                    return grade;
+                }
+            }
+        }
+        return null;
+    }
+
 
 }

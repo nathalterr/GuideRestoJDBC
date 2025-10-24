@@ -57,33 +57,47 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
         }
         return criteres;
     }
-
     @Override
     public EvaluationCriteria create(EvaluationCriteria critere) {
-        String seqSql = getSequenceQuery();
-        try (PreparedStatement seqStmt = connection.prepareStatement(seqSql);
-             ResultSet rs = seqStmt.executeQuery()) {
-            if (rs.next()) {
-                critere.setId(rs.getInt(1));
-            }
-        } catch (SQLException e) {
-            logger.error("Erreur lors de la récupération de la séquence : {}", e.getMessage());
-            return null;
-        }
+        String sql = "BEGIN INSERT INTO CRITERES_EVALUATION (nom, description) " +
+                "VALUES (?, ?) RETURNING numero INTO ?; END;";
+        try (CallableStatement stmt = connection.prepareCall(sql)) {
+            stmt.setString(1, critere.getName());
+            stmt.setString(2, critere.getDescription());
+            stmt.registerOutParameter(3, java.sql.Types.INTEGER);
 
-        String insertSql = "INSERT INTO CRITERES_EVALUATION (numero, nom, description) VALUES (?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(insertSql)) {
-            stmt.setInt(1, critere.getId());
-            stmt.setString(2, critere.getName());
-            stmt.setString(3, critere.getDescription());
             stmt.executeUpdate();
-            if (!connection.getAutoCommit()) connection.commit();
+
+            int generatedId = stmt.getInt(3);
+            critere.setId(generatedId);
+
+            if (!connection.getAutoCommit()) {
+                connection.commit();
+            }
+
             return critere;
         } catch (SQLException e) {
-            logger.error("Erreur lors de l’insertion : {}", e.getMessage());
+            if (e.getErrorCode() == 1) { // Doublon
+                logger.info("Critère '{}' déjà existant, récupération via findByName()", critere.getName());
+                try {
+                    return findByName(critere.getName());
+                } catch (SQLException ex) {
+                    logger.error("Erreur findByName après doublon: {}", ex.getMessage());
+                }
+            } else {
+                logger.error("Erreur create EvaluationCriteria: {}", e.getMessage());
+            }
+
+            try {
+                connection.rollback();
+            } catch (SQLException r) {
+                logger.error("Rollback failed: {}", r.getMessage());
+            }
+
             return null;
         }
     }
+
 
     @Override
     public boolean update(EvaluationCriteria critere) {
@@ -134,4 +148,21 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
     protected String getCountQuery() {
         return "SELECT COUNT(*) FROM CRITERES_EVALUATION";
     }
+    public EvaluationCriteria findByName(String name) throws SQLException {
+        String sql = "SELECT numero, nom, description FROM CRITERES_EVALUATION WHERE nom = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new EvaluationCriteria(
+                            rs.getInt("numero"),
+                            rs.getString("nom"),
+                            rs.getString("description")
+                    );
+                }
+            }
+        }
+        return null;
+    }
+
 }
