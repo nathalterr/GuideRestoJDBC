@@ -1,8 +1,7 @@
-package ch.hearc.ig.guideresto.services;
+package ch.hearc.ig.guideresto.persistence.mapper;
 
 import ch.hearc.ig.guideresto.business.*;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
-import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 
 import java.sql.*;
 import java.util.*;
@@ -249,7 +248,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     @Override
     public boolean update(Restaurant restaurant) {
-        System.out.println("tqa mere la pzte en fait");
         String sql = "UPDATE RESTAURANTS SET nom = ?, description = ?, site_web = ?, fk_type = ? WHERE numero = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, restaurant.getName());

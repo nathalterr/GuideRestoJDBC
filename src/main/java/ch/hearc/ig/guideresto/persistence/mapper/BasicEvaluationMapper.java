@@ -1,4 +1,4 @@
-package ch.hearc.ig.guideresto.services;
+package ch.hearc.ig.guideresto.persistence.mapper;
 
 import ch.hearc.ig.guideresto.business.BasicEvaluation;
 import ch.hearc.ig.guideresto.business.Restaurant;

@@ -1,7 +1,9 @@
 package ch.hearc.ig.guideresto.presentation;
 
 import ch.hearc.ig.guideresto.business.*;
-import ch.hearc.ig.guideresto.services.*;
+import ch.hearc.ig.guideresto.persistence.mapper.CityMapper;
+import ch.hearc.ig.guideresto.persistence.mapper.RestaurantMapper;
+import ch.hearc.ig.guideresto.persistence.mapper.RestaurantTypeMapper;
 
 import java.util.Set;
 

@@ -1,8 +1,7 @@
-package ch.hearc.ig.guideresto.services;
+package ch.hearc.ig.guideresto.persistence.mapper;
 
 import ch.hearc.ig.guideresto.business.EvaluationCriteria;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
-import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 
 import java.sql.*;
 import java.util.HashSet;

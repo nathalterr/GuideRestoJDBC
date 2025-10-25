@@ -1,11 +1,9 @@
-package ch.hearc.ig.guideresto.services;
+package ch.hearc.ig.guideresto.persistence.mapper;
 
 import ch.hearc.ig.guideresto.business.Grade;
 import ch.hearc.ig.guideresto.business.CompleteEvaluation;
 import ch.hearc.ig.guideresto.business.EvaluationCriteria;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
-import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
-import ch.hearc.ig.guideresto.services.CompleteEvaluationMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

@@ -1,9 +1,7 @@
-package ch.hearc.ig.guideresto.services;
+package ch.hearc.ig.guideresto.persistence.mapper;
 
 import ch.hearc.ig.guideresto.business.City;
-import ch.hearc.ig.guideresto.business.RestaurantType;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
-import ch.hearc.ig.guideresto.persistence.ConnectionUtils;
 
 import java.sql.*;
 import java.util.HashSet;

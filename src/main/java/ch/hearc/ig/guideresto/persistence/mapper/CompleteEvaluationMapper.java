@@ -1,10 +1,9 @@
-package ch.hearc.ig.guideresto.services;
+package ch.hearc.ig.guideresto.persistence.mapper;
 
 import ch.hearc.ig.guideresto.business.CompleteEvaluation;
-import ch.hearc.ig.guideresto.business.Grade;
 import ch.hearc.ig.guideresto.business.Restaurant;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
-import ch.hearc.ig.guideresto.services.RestaurantMapper;
+
 import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
