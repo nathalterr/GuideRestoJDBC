@@ -23,6 +23,7 @@ import java.util.Set;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
 import static ch.hearc.ig.guideresto.presentation.Application.readString;
@@ -138,15 +139,20 @@ public class UserService {
 
 
     public int countLikes(Restaurant restaurant, boolean like) {
-        Set<Evaluation> evaluations = restaurant.getEvaluations();
+        if (restaurant == null || restaurant.getEvaluations() == null) return 0;
+
         int count = 0;
-        for (Evaluation currentEval : evaluations) {
-            if (currentEval instanceof BasicEvaluation && ((BasicEvaluation) currentEval).getLikeRestaurant() == like) {
-                count++;
+        for (Evaluation currentEval : restaurant.getEvaluations()) {
+            if (currentEval instanceof BasicEvaluation) {
+                Boolean b = ((BasicEvaluation) currentEval).getLikeRestaurant();
+                if (b != null && b == like) {
+                    count++;
+                }
             }
         }
         return count;
     }
+
 
     public Set<Evaluation> getEvaluations(Restaurant restaurant) {
         return restaurant != null ? restaurant.getEvaluations() : Set.of();
@@ -225,4 +231,30 @@ public class UserService {
         }
         return city;
     }
+    public Set<BasicEvaluation> getBasicEvaluations(Restaurant restaurant) {
+        if (restaurant == null) return Set.of();
+
+        // Suppose que BasicEvaluationMapper a une méthode findByRestaurant
+        Set<BasicEvaluation> basicEvals = new BasicEvaluationMapper().findByRestaurant(restaurant);
+
+        // Ajoute au restaurant pour que countLikes fonctionne
+        restaurant.getEvaluations().removeIf(e -> e instanceof BasicEvaluation);
+        restaurant.getEvaluations().addAll(basicEvals);
+
+        return basicEvals;
+    }
+    public Set<CompleteEvaluation> getCompleteEvaluations(Restaurant restaurant) {
+        if (restaurant == null) return Set.of();
+
+        // 🔹 Récupère depuis le mapper
+        Set<CompleteEvaluation> completeEvalsFromDB = completeEvaluationMapper.findByRestaurant(restaurant);
+
+        // 🔹 Ajoute au restaurant pour que la méthode fonctionne ensuite
+        restaurant.getEvaluations().removeIf(e -> e instanceof CompleteEvaluation);
+        restaurant.getEvaluations().addAll(completeEvalsFromDB);
+
+        return completeEvalsFromDB;
+    }
+
+
 }

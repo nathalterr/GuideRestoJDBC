@@ -121,7 +121,6 @@ public class Application {
             Set<Restaurant> restaurants = userService.getAllRestaurants();
 
             Restaurant restaurant = pickRestaurant(restaurants);
-
             if (restaurant != null) {
                 showRestaurant(restaurant);
             }
@@ -296,31 +295,68 @@ public class Application {
      * @param restaurant Le restaurant à afficher
      */
 
-    private static void showRestaurant(Restaurant restaurant) throws SQLException {
-        Set<Restaurant> allRestaurants = userService.getAllRestaurants();
-
-        if (allRestaurants.isEmpty()) {
-            System.out.println("Aucun restaurant trouvé !");
+    private static void showRestaurant(Restaurant restaurant) {
+        if (restaurant == null) {
+            System.out.println("Restaurant invalide !");
             return;
         }
 
-        System.out.println("Liste des restaurants :");
-        int index = 1;
-        for (Restaurant r : allRestaurants) {
-            System.out.println(index + ". " + r.getName() + " - "
-                    + r.getAddress().getCity().getCityName() + " (" + r.getAddress().getCity().getZipCode() + ")");
-            index++;
+        try {
+            // 🔹 Infos générales
+            System.out.println("=== Détails du restaurant ===");
+            System.out.println("Nom : " + restaurant.getName());
+            System.out.println("Description : " + restaurant.getDescription());
+            System.out.println("Type : " + restaurant.getType().getLabel());
+            System.out.println("Site web : " + restaurant.getWebsite());
+            System.out.println("Adresse : " + restaurant.getAddress().getStreet() + ", " +
+                    restaurant.getAddress().getCity().getZipCode() + " " + restaurant.getAddress().getCity().getCityName());
+            System.out.println();
+
+
+            Set<CompleteEvaluation> completeEvals = userService.getCompleteEvaluations(restaurant);
+
+            // 🔹 Likes / Dislikes
+            // Récupérer BasicEvaluation depuis le service
+            userService.getBasicEvaluations(restaurant);
+
+            // Maintenant countLikes donnera les vrais résultats
+            System.out.println("Likes : " + userService.countLikes(restaurant, true));
+            System.out.println("Dislikes : " + userService.countLikes(restaurant, false));
+
+            System.out.println();
+
+            // Affiche-les comme tu le fais déjà
+            System.out.println("Évaluations complètes :");
+            if (completeEvals.isEmpty()) {
+                System.out.println("Aucune évaluation complète pour ce restaurant.");
+            } else {
+                for (CompleteEvaluation ce : completeEvals) {
+                    System.out.println("Utilisateur : " + ce.getUsername());
+                    System.out.println("Commentaire : " + ce.getComment());
+                    if (ce.getGrades().isEmpty()) {
+                        System.out.println("Aucune note disponible");
+                    } else {
+                        for (Grade g : ce.getGrades()) {
+                            System.out.println(g.getCriteria().getName() + " : " + g.getGrade() + "/5");
+                        }
+                    }
+                    System.out.println("--------------------------");
+                }
+            }
+
+            // 🔹 Menu actions pour ce restaurant
+            int choice;
+            do {
+                showRestaurantMenu();
+                choice = readInt();
+                proceedRestaurantMenu(choice, restaurant);
+            } while (choice != 0 && choice != 6);
+
+        } catch (Exception e) {
+            System.err.println("Erreur lors de l'affichage du restaurant : " + e.getMessage());
+            e.printStackTrace();
         }
-        // 🔹 Menu actions
-        int choice;
-        do {
-            showRestaurantMenu();
-            choice = readInt();
-            proceedRestaurantMenu(choice, restaurant);
-        } while (choice != 0 && choice != 6);
     }
-
-
     /**
      * Parcourt la liste et compte le nombre d'évaluations basiques positives ou négatives en fonction du paramètre likeRestaurant
      *
