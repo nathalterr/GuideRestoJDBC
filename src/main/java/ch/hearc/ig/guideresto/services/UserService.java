@@ -11,7 +11,10 @@ import ch.hearc.ig.guideresto.persistence.mapper.*;
 import ch.hearc.ig.guideresto.business.City;
 import ch.hearc.ig.guideresto.persistence.mapper.CityMapper;
 
-import java.util.Set;
+import java.net.Inet4Address;
+import java.net.UnknownHostException;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Set;
@@ -22,6 +25,7 @@ import java.sql.SQLException;
 import java.util.Set;
 
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
+import static ch.hearc.ig.guideresto.presentation.Application.readString;
 
 public class UserService {
     private Connection connection;
@@ -131,4 +135,120 @@ public class UserService {
     public boolean deleteRestaurant(Restaurant restaurant) {
         return restaurantMapper.delete(restaurant);
     }
+
+
+    public int countLikes(Restaurant restaurant, boolean like) {
+        Set<Evaluation> evaluations = restaurant.getEvaluations();
+        int count = 0;
+        for (Evaluation currentEval : evaluations) {
+            if (currentEval instanceof BasicEvaluation && ((BasicEvaluation) currentEval).getLikeRestaurant() == like) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public Set<Evaluation> getEvaluations(Restaurant restaurant) {
+        return restaurant != null ? restaurant.getEvaluations() : Set.of();
+    }
+    public BasicEvaluation addBasicEvaluation(Restaurant restaurant, Boolean like) {
+        if (restaurant == null || like == null) return null;
+
+        String ipAddress;
+        try {
+            ipAddress = Inet4Address.getLocalHost().toString();
+        } catch (UnknownHostException ex) {
+            ipAddress = "Indisponible";
+            throw new RuntimeException(ex);
+        }
+
+        BasicEvaluation eval = new BasicEvaluation(null, new Date(), restaurant, like, ipAddress);
+
+        // Persistance
+        BasicEvaluationMapper BEM = new BasicEvaluationMapper();
+        BEM.create(eval);
+
+        // Ajout à l'objet restaurant
+        restaurant.getEvaluations().add(eval);
+
+        return eval;
+    }
+
+    public CompleteEvaluation addCompleteEvaluation(Restaurant restaurant, String username, String comment, Map<EvaluationCriteria, Integer> notes) {
+        if (restaurant == null || username == null || notes == null) return null;
+
+        CompleteEvaluation eval = new CompleteEvaluation(null, new Date(), restaurant, comment, username);
+
+        for (Map.Entry<EvaluationCriteria, Integer> entry : notes.entrySet()) {
+            Grade grade = new Grade(null, entry.getValue(), eval, entry.getKey());
+            eval.getGrades().add(grade);
+        }
+
+        // Persistance
+        CompleteEvaluationMapper evalMapper = new CompleteEvaluationMapper();
+        evalMapper.create(eval);
+
+        GradeMapper gradeMapper = new GradeMapper();
+        for (Grade g : eval.getGrades()) {
+            gradeMapper.create(g);
+        }
+
+        // Ajouter à l'objet restaurant
+        restaurant.getEvaluations().add(eval);
+
+        return eval;
+    }
+    public boolean updateRestaurantDetails(Restaurant restaurant, String newName, String newDescription,
+                                           String newWebsite, RestaurantType newType,
+                                           String newStreet, City newCity) {
+        if (restaurant == null || newName == null || newStreet == null || newCity == null) return false;
+
+        // Mise à jour de l'objet
+        restaurant.setName(newName);
+        restaurant.setDescription(newDescription);
+        restaurant.setWebsite(newWebsite);
+        if (newType != null) {
+            restaurant.setType(newType);
+        }
+        restaurant.getAddress().setStreet(newStreet);
+        restaurant.getAddress().setCity(newCity);
+
+        // Persistance
+        return restaurantMapper.update(restaurant);
+    }
+
+    public City addOrGetCity(String cityName, String postalCode) {
+        City city = cityMapper.findByName(cityName);
+        if (city == null) {
+            city = new City(null, postalCode, cityName);
+            cityMapper.create(city);
+        }
+        return city;
+    }
+    private static void editRestaurantAddress(Restaurant restaurant) {
+        System.out.println("Edition de l'adresse d'un restaurant !");
+
+        System.out.print("Nouvelle rue : ");
+        String newStreet = readString();
+
+        System.out.print("Nom de la ville : ");
+        String cityName = readString();
+
+        City dbCity = userService.findCityByName(cityName);
+        String postalCode = null;
+        if (dbCity == null) {
+            System.out.print("Code postal pour la nouvelle ville : ");
+            postalCode = readString();
+        }
+
+        boolean updated = userService.updateRestaurantAddress(restaurant, newStreet, cityName, postalCode);
+        System.out.println(updated ? "Adresse mise à jour avec succès !" : "Erreur lors de la mise à jour.");
+    }
+
+    public boolean deleteRestaurantService(Restaurant restaurant) {
+        if (restaurant == null) return false;
+        return restaurantMapper.delete(restaurant);
+    }
+
+
 }

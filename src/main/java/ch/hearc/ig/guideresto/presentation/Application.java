@@ -448,18 +448,8 @@ public class Application {
      * @param like       Est-ce un like ou un dislike ?
      */
     private static void addBasicEvaluation(Restaurant restaurant, Boolean like) {
-        String ipAddress;
-        try {
-            ipAddress = Inet4Address.getLocalHost().toString(); // Permet de retrouver l'adresse IP locale de l'utilisateur.
-        } catch (UnknownHostException ex) {
-            logger.error("Error - Couldn't retreive host IP address");
-            ipAddress = "Indisponible";
-        }
-        BasicEvaluation eval = new BasicEvaluation(1, new Date(), restaurant, like, ipAddress);
-        restaurant.getEvaluations().add(eval);
-        BasicEvaluationMapper BEM =  new BasicEvaluationMapper();
-        BEM.create(eval);
-
+        Restaurant myRestaurant = userService.getAllRestaurants().iterator().next(); // juste pour l'exemple
+        userService.addBasicEvaluation(myRestaurant, like);
         System.out.println("Votre vote a été pris en compte !");
     }
 
@@ -469,41 +459,30 @@ public class Application {
      * @param restaurant Le restaurant à évaluer
      */
     private static void evaluateRestaurant(Restaurant restaurant) {
-        EvaluationCriteriaMapper criteriaMapper = new EvaluationCriteriaMapper();
-        CompleteEvaluationMapper evalMapper = new CompleteEvaluationMapper();
-        GradeMapper gradeMapper = new GradeMapper();
-
         System.out.print("Nom d'utilisateur : ");
         String username = readString();
 
         System.out.print("Commentaire : ");
         String comment = readString();
 
-        // 🔹 1. Créer l'évaluation en mémoire
-        CompleteEvaluation eval = new CompleteEvaluation(null, new Date(), restaurant, comment, username);
-
-        // 🔹 2. Ajouter les notes à l'évaluation
-        Set<EvaluationCriteria> criteres = criteriaMapper.findAll();
+        // Lire les notes pour chaque critère
+        Map<EvaluationCriteria, Integer> notes = new HashMap<>();
+        Set<EvaluationCriteria> criteres = new EvaluationCriteriaMapper().findAll();
         for (EvaluationCriteria crit : criteres) {
             int note;
             do {
                 System.out.print(crit.getName() + " (1-5) : ");
                 note = readInt();
-            } while (note < 1 || note > 5); // Validation simple
-            Grade grade = new Grade(null, note, eval, crit);
-            eval.getGrades().add(grade);
+            } while (note < 1 || note > 5);
+            notes.put(crit, note);
         }
 
-        // 🔹 3. Persister l'évaluation et récupérer son ID
-        evalMapper.create(eval);
-
-        // 🔹 4. Persister chaque grade lié à cette évaluation
-        for (Grade g : eval.getGrades()) {
-            gradeMapper.create(g);
-        }
+        // Déleguer à UserService
+        userService.addCompleteEvaluation(restaurant, username, comment, notes);
 
         System.out.println("✅ Évaluation enregistrée avec succès !");
     }
+
 
 
     /**
@@ -515,57 +494,35 @@ public class Application {
     private static void editRestaurant(Restaurant restaurant) {
         System.out.println("Edition d'un restaurant !");
 
-        // 🔹 1. Nom, description, site web
         System.out.print("Nouveau nom : ");
-        restaurant.setName(readString());
+        String newName = readString();
 
         System.out.print("Nouvelle description : ");
-        restaurant.setDescription(readString());
+        String newDescription = readString();
 
         System.out.print("Nouveau site web : ");
-        restaurant.setWebsite(readString());
+        String newWebsite = readString();
 
-        // 🔹 2. Type de restaurant
-        RestaurantTypeMapper rtm = new RestaurantTypeMapper();
-        RestaurantType newType = pickRestaurantType(rtm.findAll());
-        if (newType != null && newType != restaurant.getType()) {
-            restaurant.setType(newType);
-        }
+        RestaurantType newType = pickRestaurantType(userService.getAllTypes());
 
-        // 🔹 3. Adresse (rue + ville)
         System.out.print("Nouvelle rue : ");
         String newStreet = readString();
 
         System.out.print("Nom de la ville : ");
         String cityName = readString();
 
-        CityMapper cityMapper = new CityMapper();
-        try {
-            City dbCity = cityMapper.findByName(cityName);
-            if (dbCity == null) {
-                System.out.print("Code postal pour la nouvelle ville : ");
-                String postalCode = readString();
-
-                dbCity = new City(null, postalCode, cityName);
-                cityMapper.create(dbCity);
-                System.out.println("Nouvelle ville créée : " + dbCity.getCityName());
-            }
-            restaurant.getAddress().setStreet(newStreet);
-            restaurant.getAddress().setCity(dbCity);
-
-            // 🔹 4. Mise à jour en base
-            RestaurantMapper restaurantMapper = new RestaurantMapper();
-            boolean updated = restaurantMapper.update(restaurant);
-            if (updated) {
-                System.out.println("Restaurant mis à jour avec succès !");
-            } else {
-                System.out.println("Erreur lors de la mise à jour du restaurant.");
-            }
-        } catch (SQLException e) {
-            System.err.println("Erreur lors de la mise à jour de l'adresse : " + e.getMessage());
-            e.printStackTrace();
+        City dbCity = userService.findCityByName(cityName);
+        if (dbCity == null) {
+            System.out.print("Code postal pour la nouvelle ville : ");
+            String postalCode = readString();
+            dbCity = userService.addOrGetCity(cityName, postalCode);
+            System.out.println("Nouvelle ville créée : " + dbCity.getCityName());
         }
+
+        boolean updated = userService.updateRestaurantDetails(restaurant, newName, newDescription, newWebsite, newType, newStreet, dbCity);
+        System.out.println(updated ? "Restaurant mis à jour avec succès !" : "Erreur lors de la mise à jour.");
     }
+
 
 
     /**
@@ -577,43 +534,23 @@ public class Application {
     private static void editRestaurantAddress(Restaurant restaurant) {
         System.out.println("Edition de l'adresse d'un restaurant !");
 
-        // 🔹 1. Demande de la nouvelle rue
         System.out.print("Nouvelle rue : ");
         String newStreet = readString();
 
-        // 🔹 2. Demande du nom de la ville
         System.out.print("Nom de la ville : ");
         String cityName = readString();
 
-        CityMapper cityMapper = new CityMapper();
-        RestaurantMapper restaurantMapper = new RestaurantMapper();
-
-        try {
-            // 🔹 3. Vérifie si la ville existe déjà dans la DB
-            City dbCity = cityMapper.findByName(cityName);
-            if (dbCity == null) {
-                // Si la ville n'existe pas, création
-                System.out.print("Code postal pour la nouvelle ville : ");
-                String postalCode = readString();
-
-                dbCity = new City(null, cityName, postalCode);
-                cityMapper.create(dbCity);
-                System.out.println("Nouvelle ville créée : " + dbCity.getCityName());
-            }
-
-            // 🔹 4. Mise à jour de l'adresse du restaurant
-            boolean updated = restaurantMapper.updateAddress(restaurant, newStreet, dbCity);
-            if (updated) {
-                System.out.println("Adresse mise à jour avec succès !");
-            } else {
-                System.out.println("Erreur lors de la mise à jour de l'adresse.");
-            }
-
-        } catch (SQLException ex) {
-            System.err.println("Erreur lors de la mise à jour de l'adresse : " + ex.getMessage());
-            ex.printStackTrace();
+        City dbCity = userService.findCityByName(cityName);
+        String postalCode = null;
+        if (dbCity == null) {
+            System.out.print("Code postal pour la nouvelle ville : ");
+            postalCode = readString();
         }
+
+        boolean updated = userService.updateRestaurantAddress(restaurant, newStreet, cityName, postalCode);
+        System.out.println(updated ? "Adresse mise à jour avec succès !" : "Erreur lors de la mise à jour.");
     }
+
 
     /**
      * Après confirmation par l'utilisateur, supprime complètement le restaurant et toutes ses évaluations du référentiel.
@@ -623,11 +560,14 @@ public class Application {
     private static void deleteRestaurant(Restaurant restaurant) {
         System.out.println("Etes-vous sûr de vouloir supprimer ce restaurant ? (O/n)");
         String choice = readString();
-        if (choice.equals("o") || choice.equals("O")) {
-            RestaurantMapper restaurantMapper = new RestaurantMapper();
-            restaurantMapper.delete(restaurant);
+        if (choice.equalsIgnoreCase("o")) {
+            boolean deleted = userService.deleteRestaurantService(restaurant);
+            System.out.println(deleted ? "Restaurant supprimé avec succès !" : "Erreur lors de la suppression.");
+        } else {
+            System.out.println("Suppression annulée.");
         }
     }
+
 
     /**
      * Recherche dans le Set le restaurant comportant le nom passé en paramètre.
