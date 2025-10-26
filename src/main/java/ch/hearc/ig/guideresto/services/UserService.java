@@ -88,11 +88,7 @@ public class UserService {
         return restaurantMapper.findByName(name);
     }
 
-    public Set<Restaurant> findRestaurantsByCity(String cityName) {
-        Set<Restaurant> all = restaurantMapper.findAll();
-        all.removeIf(r -> !r.getAddress().getCity().getCityName().equalsIgnoreCase(cityName));
-        return all;
-    }
+    public Set<Restaurant> findRestaurantsByCity(String cityPart) { if (cityPart == null || cityPart.isEmpty()) return Set.of(); Set<Restaurant> all = restaurantMapper.findAll(); all.removeIf(r -> !r.getAddress().getCity().getCityName().toLowerCase() .contains(cityPart.toLowerCase())); return all; }
 
     public Set<Restaurant> findRestaurantsByType(String typeLabel) {
         RestaurantType type = typeMapper.findByLabel(typeLabel);
