@@ -2,11 +2,9 @@ package ch.hearc.ig.guideresto.persistence.mapper;
 
 import ch.hearc.ig.guideresto.business.*;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
-
 import java.sql.*;
 import java.util.*;
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

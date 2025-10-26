@@ -4,24 +4,18 @@ import ch.hearc.ig.guideresto.business.Grade;
 import ch.hearc.ig.guideresto.business.CompleteEvaluation;
 import ch.hearc.ig.guideresto.business.EvaluationCriteria;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import java.sql.*;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
 import ch.hearc.ig.guideresto.business.*;
-import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import java.sql.*;
 import java.util.*;
-import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
 
 public class GradeMapper extends AbstractMapper<Grade> {
 
-    // 🔹 Cache Identity Map (static pour toute l’app)
     private static final Map<Integer, Grade> identityMap = new HashMap<>();
-
     private final Connection connection;
     private final EvaluationCriteriaMapper criteriaMapper;
     private final CompleteEvaluationMapper evaluationMapper;

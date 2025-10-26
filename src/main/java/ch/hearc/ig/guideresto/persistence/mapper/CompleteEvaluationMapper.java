@@ -4,23 +4,15 @@ import ch.hearc.ig.guideresto.business.CompleteEvaluation;
 import ch.hearc.ig.guideresto.business.Restaurant;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import java.sql.*;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.LinkedHashSet;
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
-import ch.hearc.ig.guideresto.business.CompleteEvaluation;
-import ch.hearc.ig.guideresto.business.Restaurant;
-import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import java.sql.*;
 import java.util.*;
 
-import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
-
 public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation> {
 
-    // ⚡ Cache d'identité
     private static final Map<Integer, CompleteEvaluation> identityMap = new HashMap<>();
-
     private final Connection connection;
     private RestaurantMapper restaurantMapper;
     private GradeMapper gradeMapper;
@@ -145,7 +137,6 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
 
         } catch (SQLException e) {
             if (e.getErrorCode() == 1) {
-                        evaluation.getUsername(), evaluation.getRestaurant().getId());
                 try {
                     return findByUserAndRest(evaluation.getUsername(), evaluation.getRestaurant().getId());
                 } catch (SQLException ex) {

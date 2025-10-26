@@ -2,7 +2,6 @@ package ch.hearc.ig.guideresto.presentation;
 
 import ch.hearc.ig.guideresto.business.*;
 import ch.hearc.ig.guideresto.persistence.mapper.*;
-
 import java.util.Set;
 
 public class MainTest {

@@ -2,21 +2,14 @@ package ch.hearc.ig.guideresto.persistence.mapper;
 
 import ch.hearc.ig.guideresto.business.RestaurantType;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
-
 import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
-
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
-import ch.hearc.ig.guideresto.business.RestaurantType;
-import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.sql.*;
 import java.util.*;
-
-import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
 
 public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
 

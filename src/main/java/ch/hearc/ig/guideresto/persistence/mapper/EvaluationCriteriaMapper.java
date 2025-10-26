@@ -3,14 +3,10 @@ package ch.hearc.ig.guideresto.persistence.mapper;
 import ch.hearc.ig.guideresto.business.EvaluationCriteria;
 import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import java.sql.*;
-import java.util.HashSet;
 import java.util.Set;
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
-import ch.hearc.ig.guideresto.business.EvaluationCriteria;
-import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import java.sql.*;
 import java.util.*;
-import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
 
 public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria> {
 

@@ -1,7 +1,6 @@
 package ch.hearc.ig.guideresto.persistence;
 
 import ch.hearc.ig.guideresto.business.*;
-
 import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.Set;

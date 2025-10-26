@@ -1,14 +1,10 @@
 package ch.hearc.ig.guideresto.presentation;
 
 import ch.hearc.ig.guideresto.business.*;
-//import ch.hearc.ig.guideresto.persistence.FakeItems;
 import ch.hearc.ig.guideresto.persistence.mapper.*;
 import ch.hearc.ig.guideresto.services.UserService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.net.Inet4Address;
-import java.net.UnknownHostException;
 import java.sql.SQLException;
 import java.util.*;
 
