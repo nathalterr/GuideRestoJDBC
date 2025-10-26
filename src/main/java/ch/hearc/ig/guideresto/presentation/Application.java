@@ -20,7 +20,7 @@ public class Application {
 
     private static Scanner scanner;
     private static final Logger logger = LogManager.getLogger(Application.class);
-    private static UserService userService;
+    private static final UserService userService = new UserService();
 
     public static void main(String[] args) {
 
