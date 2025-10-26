@@ -35,6 +35,12 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
         this.gradeMapper = new GradeMapper();
     }
 
+    public CompleteEvaluationMapper(RestaurantMapper restaurantMapper, GradeMapper gradeMapper) {
+        this.connection = getConnection();
+        this.restaurantMapper = restaurantMapper;
+        this.gradeMapper = gradeMapper;
+    }
+
     public void setDependencies(RestaurantMapper restaurantMapper, GradeMapper gradeMapper) {
         this.restaurantMapper = restaurantMapper;
         this.gradeMapper = gradeMapper;

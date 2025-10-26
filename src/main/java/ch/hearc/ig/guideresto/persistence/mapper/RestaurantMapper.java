@@ -6,15 +6,9 @@ import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import java.sql.*;
 import java.util.*;
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
-import ch.hearc.ig.guideresto.business.*;
-import ch.hearc.ig.guideresto.persistence.AbstractMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.sql.*;
-import java.util.*;
-
-import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
 
 public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
@@ -24,17 +18,24 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     private CompleteEvaluationMapper completeEvalMapper;
     private GradeMapper gradeMapper;
     private BasicEvaluationMapper basicEvalMapper;
+    private CityMapper cityMapper;
+    public RestaurantTypeMapper typeMapper;
 
     public RestaurantMapper() {
         this.connection = getConnection();
     }
 
-    public void setDependencies(CompleteEvaluationMapper completeEvalMapper,
-                                GradeMapper gradeMapper,
-                                BasicEvaluationMapper basicEvalMapper) {
+    public void setDependenciesEval(CompleteEvaluationMapper completeEvalMapper,
+                                    GradeMapper gradeMapper,
+                                    BasicEvaluationMapper basicEvalMapper) {
         this.completeEvalMapper = completeEvalMapper;
         this.gradeMapper = gradeMapper;
         this.basicEvalMapper = basicEvalMapper;
+    }
+
+    public void setDependenciesCityType(CityMapper cityMapper, RestaurantTypeMapper typeMapper){
+        this.cityMapper = cityMapper;
+        this.typeMapper = typeMapper;
     }
 
     @Override
@@ -53,8 +54,8 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     // Crée City "léger" pour éviter boucle infinie
-                    City city = new CityMapper().findById(rs.getInt("fk_vill"));
-                    RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
+                    City city = this.cityMapper.findById(rs.getInt("fk_vill"));
+                    RestaurantType type = this.typeMapper.findById(rs.getInt("fk_type"));
 
                     Localisation address = new Localisation(rs.getString("adresse"), city);
 
@@ -370,8 +371,8 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                     // Vérifie le cache d'abord
                     Restaurant restaurant = identityMap.get(id);
                     if (restaurant == null) {
-                        City city = new CityMapper().findById(rs.getInt("fk_vill"));
-                        RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
+                        City city = this.cityMapper.findById(rs.getInt("fk_vill"));
+                        RestaurantType type = this.typeMapper.findById(rs.getInt("fk_type"));
                         Localisation address = new Localisation(rs.getString("adresse"), city);
 
                         restaurant = new Restaurant(

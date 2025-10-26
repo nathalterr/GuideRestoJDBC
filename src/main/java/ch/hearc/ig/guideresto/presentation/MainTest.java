@@ -3,49 +3,42 @@ package ch.hearc.ig.guideresto.presentation;
 import ch.hearc.ig.guideresto.business.*;
 import ch.hearc.ig.guideresto.persistence.mapper.*;
 
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 public class MainTest {
 
     public static void main(String[] args) throws Exception {
-
         System.out.println("==== INITIALISATION DES MAPPERS ====");
-        CityMapper cityMapper = new CityMapper();
-        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper();
-        GradeMapper gradeMapper = new GradeMapper();
-        BasicEvaluationMapper basicEvalMapper = new BasicEvaluationMapper();
-        RestaurantMapper restaurantMapper = new RestaurantMapper();
-        CompleteEvaluationMapper completeEvalMapper = new CompleteEvaluationMapper();
-        EvaluationCriteriaMapper critMapper = new EvaluationCriteriaMapper();
+        MapperFactory factory = new MapperFactory();
+        CityMapper cityMapper = factory.getCityMapper();
+        RestaurantTypeMapper typeMapper = factory.getTypeMapper();
+        GradeMapper gradeMapper = factory.getGradeMapper();
+        BasicEvaluationMapper basicEvalMapper = factory.getBasicEvalMapper();
+        RestaurantMapper restaurantMapper = factory.getRestaurantMapper();
+        CompleteEvaluationMapper completeEvalMapper = factory.getCompleteEvalMapper();
+        EvaluationCriteriaMapper critMapper = factory.getCriteriaMapper();
 
         System.out.println("==== CREATION DE LA VILLE ET DU TYPE ====");
-        City city = new City("12345", "Testville");
+        City city = new City("1000", "Testville");
         cityMapper.create(city);
 
         RestaurantType type = new RestaurantType("TestCuisine", "Cuisine de test");
-        typeMapper.create(type);
+        type = typeMapper.create(type); // récupère l'ID généré
 
         System.out.println("==== CREATION RESTAURANT ====");
-        Restaurant rest = new Restaurant(
-                null,
-                "Le Testeur",
-                "Description Test",
-                "http://test.com",
-                new Localisation("1 rue du Test", city),
-                type
-        );
-        restaurantMapper.create(rest);
+        Restaurant rest = new Restaurant(null, "Le Testeur", "Description Test", "http://test.com",
+                new Localisation("1 rue du Test", city), type);
+        rest = restaurantMapper.create(rest);
 
         System.out.println("==== CREATION BASIC EVALUATION ====");
-        BasicEvaluation like1 = new BasicEvaluation(null, new java.util.Date(), rest, true, "127.0.0.1");
-        BasicEvaluation like2 = new BasicEvaluation(null, new java.util.Date(), rest, false, "192.168.0.1");
+        BasicEvaluation like1 = new BasicEvaluation(null, new Date(), rest, true, "127.0.0.1");
+        BasicEvaluation like2 = new BasicEvaluation(null, new Date(), rest, false, "192.168.0.1");
         basicEvalMapper.create(like1);
         basicEvalMapper.create(like2);
 
         System.out.println("==== CREATION COMPLETE EVALUATION ====");
-        CompleteEvaluation completeEval = new CompleteEvaluation(null, rest, "a l'aide", "userTest");
-        completeEvalMapper.create(completeEval);
+        CompleteEvaluation completeEval = new CompleteEvaluation(new Date(), rest, "A l'aide", "userTest");
+        completeEval = completeEvalMapper.create(completeEval);
 
         System.out.println("==== CREATION GRADES SUR COMPLETE EVALUATION ====");
         Set<EvaluationCriteria> allCriteria = critMapper.findAll();
@@ -65,7 +58,7 @@ public class MainTest {
         System.out.println("==== TEST: FIND ALL RESTAURANTS ====");
         Set<Restaurant> allRests = restaurantMapper.findAll();
         for (Restaurant r : allRests) {
-            System.out.println("Restaurant: " + r.getName() + " (" + r.getId() + ")");
+            System.out.println("Restaurant: " + r.getName() + " (id=" + r.getId() + ")");
         }
 
         System.out.println("==== TEST: FIND BY CITY ====");

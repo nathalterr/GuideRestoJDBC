@@ -1,7 +1,5 @@
 package ch.hearc.ig.guideresto.persistence.mapper;
 
-import ch.hearc.ig.guideresto.persistence.mapper.*;
-
 public class MapperFactory {
 
     private final CityMapper cityMapper;
@@ -13,15 +11,22 @@ public class MapperFactory {
     private final EvaluationCriteriaMapper criteriaMapper;
 
     public MapperFactory() {
+        // 🔹 Crée d'abord les mappers "indépendants"
         this.cityMapper = new CityMapper();
         this.typeMapper = new RestaurantTypeMapper();
         this.gradeMapper = new GradeMapper();
         this.basicEvalMapper = new BasicEvaluationMapper();
-        this.restaurantMapper = new RestaurantMapper();
-        this.completeEvalMapper = new CompleteEvaluationMapper();
         this.criteriaMapper = new EvaluationCriteriaMapper();
-        this.restaurantMapper.setDependencies(completeEvalMapper, gradeMapper, basicEvalMapper);
-        this.completeEvalMapper.setDependencies(restaurantMapper,gradeMapper);
+
+        // 🔹 Crée le mapper restaurant sans dépendances
+        this.restaurantMapper = new RestaurantMapper();
+
+        // 🔹 Crée le mapper complete evaluation avec restaurantMapper et gradeMapper
+        this.completeEvalMapper = new CompleteEvaluationMapper(restaurantMapper, gradeMapper);
+
+        // 🔹 Injecte le mapper completeEval et grade dans restaurantMapper pour les opérations "delete"
+        this.restaurantMapper.setDependenciesEval(this.completeEvalMapper, this.gradeMapper, this.basicEvalMapper);
+        this.restaurantMapper.setDependenciesCityType(this.cityMapper, this.typeMapper);
     }
 
     public CityMapper getCityMapper() { return cityMapper; }
@@ -31,4 +36,5 @@ public class MapperFactory {
     public BasicEvaluationMapper getBasicEvalMapper() { return basicEvalMapper; }
     public CompleteEvaluationMapper getCompleteEvalMapper() { return completeEvalMapper; }
     public EvaluationCriteriaMapper getCriteriaMapper() { return criteriaMapper; }
+
 }
