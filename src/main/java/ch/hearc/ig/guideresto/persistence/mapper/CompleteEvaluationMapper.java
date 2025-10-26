@@ -145,7 +145,6 @@ public class CompleteEvaluationMapper extends AbstractMapper<CompleteEvaluation>
 
         } catch (SQLException e) {
             if (e.getErrorCode() == 1) {
-                logger.info("Évaluation déjà existante (user: {}, resto: {}), récupération via findByUserAndRest()",
                         evaluation.getUsername(), evaluation.getRestaurant().getId());
                 try {
                     return findByUserAndRest(evaluation.getUsername(), evaluation.getRestaurant().getId());

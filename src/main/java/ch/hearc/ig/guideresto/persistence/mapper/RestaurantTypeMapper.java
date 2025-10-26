@@ -122,7 +122,6 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
             // 🔹 Vérifie si le type existe déjà pour éviter doublon inutile
             RestaurantType existing = findByName(type.getLabel());
             if (existing != null) {
-                logger.info("Type '{}' déjà existant, récupération via findByName()", type.getLabel());
                 return existing;
             }
 
@@ -152,7 +151,6 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
 
             // 🔹 Ajout au cache
             identityMap.put(type.getId(), type);
-            logger.info("✅ RestaurantType {} créé et ajouté à l'Identity Map", type.getId());
 
             return type;
 

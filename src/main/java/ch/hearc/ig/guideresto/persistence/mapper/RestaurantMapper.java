@@ -42,7 +42,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
     public Restaurant findById(int id) {
         // Vérifie le cache d'abord
         if (identityMap.containsKey(id)) {
-            logger.info("⚡ Restaurant {} récupéré depuis l'Identity Map", id);
             return identityMap.get(id);
         }
 
@@ -170,7 +169,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
             // 🔹 Ajout au cache
             identityMap.put(restaurant.getId(), restaurant);
-            logger.info("✅ Restaurant {} créé et ajouté à l'Identity Map", restaurant.getId());
 
             return restaurant;
 
@@ -201,7 +199,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             if (!connection.getAutoCommit()) connection.commit();
 
             identityMap.put(restaurant.getId(), restaurant);
-            logger.info("✅ Restaurant {} mis à jour ({} ligne(s))", restaurant.getId(), rows);
             return rows > 0;
 
         } catch (SQLException e) {
@@ -252,7 +249,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             if (!connection.getAutoCommit()) connection.commit();
 
             if (rows > 0) removeFromCache(id);
-            logger.info("✅ Restaurant {} supprimé ({} ligne(s))", id, rows);
             return rows > 0;
 
         } catch (SQLException e) {
@@ -298,7 +294,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
             if (!connection.getAutoCommit()) connection.commit();
 
             identityMap.put(restaurant.getId(), restaurant);
-            logger.info("✅ Adresse Restaurant {} mise à jour ({} ligne(s))", restaurant.getId(), rows);
             return rows > 0;
         }
     }
@@ -339,7 +334,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                                 type
                         );
                         identityMap.put(id, restaurant);
-                        logger.info("⚡ Restaurant {} ajouté à l'Identity Map depuis findByCity", id);
                     }
 
                     restaurants.add(restaurant);
@@ -382,7 +376,6 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                                 type
                         );
                         identityMap.put(id, restaurant);
-                        logger.info("⚡ Restaurant {} ajouté à l'Identity Map depuis findByRestaurantType", id);
                     }
 
                     restaurants.add(restaurant);

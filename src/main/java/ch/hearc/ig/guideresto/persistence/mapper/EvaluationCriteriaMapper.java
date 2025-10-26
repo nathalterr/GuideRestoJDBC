@@ -99,7 +99,6 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
             return critere;
         } catch (SQLException e) {
             if (e.getErrorCode() == 1) { // Doublon
-                logger.info("Critère '{}' déjà existant, récupération via findByName()", critere.getName());
                 try {
                     return findByName(critere.getName());
                 } catch (SQLException ex) {

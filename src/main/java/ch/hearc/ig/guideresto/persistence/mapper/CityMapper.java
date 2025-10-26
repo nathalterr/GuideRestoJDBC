@@ -32,7 +32,6 @@ public class CityMapper extends AbstractMapper<City> {
     public City findById(int id) {
         // Vérifie le cache d'abord
         if (identityMap.containsKey(id)) {
-            logger.info("⚡ City {} récupérée depuis l'Identity Map", id);
             return identityMap.get(id);
         }
 
@@ -50,7 +49,6 @@ public class CityMapper extends AbstractMapper<City> {
                     );
 
                     identityMap.put(id, city);
-                    logger.info("✅ City {} ajoutée à l'Identity Map", id);
                     return city;
                 }
             }
@@ -106,7 +104,6 @@ public class CityMapper extends AbstractMapper<City> {
 
         } catch (SQLException e) {
             if (e.getErrorCode() == 1) { // doublon
-                logger.info("Ville '{}' déjà existante, récupération via findByName()", city.getCityName());
                 try {
                     return findByName(city.getCityName());
                 } catch (SQLException ex) {
@@ -178,7 +175,6 @@ public class CityMapper extends AbstractMapper<City> {
         // Vérifie d'abord si la ville est dans le cache
         for (City cachedCity : identityMap.values()) {
             if (cachedCity.getCityName().equalsIgnoreCase(name)) {
-                logger.info("⚡ City '{}' récupérée depuis l'Identity Map", name);
                 return cachedCity;
             }
         }
@@ -202,7 +198,6 @@ public class CityMapper extends AbstractMapper<City> {
                     );
 
                     identityMap.put(id, city);
-                    logger.info("✅ City '{}' ajoutée à l'Identity Map depuis DB", name);
                     return city;
                 }
             }

@@ -27,7 +27,6 @@ public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
     @Override
     public BasicEvaluation findById(int id) {
         if (identityMap.containsKey(id)) {
-            logger.info("⚡ BasicEvaluation {} récupérée depuis l'Identity Map", id);
             return identityMap.get(id);
         }
 
