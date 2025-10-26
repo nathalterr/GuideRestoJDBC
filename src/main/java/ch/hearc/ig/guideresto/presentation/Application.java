@@ -3,6 +3,7 @@ package ch.hearc.ig.guideresto.presentation;
 import ch.hearc.ig.guideresto.business.*;
 //import ch.hearc.ig.guideresto.persistence.FakeItems;
 import ch.hearc.ig.guideresto.persistence.mapper.*;
+import ch.hearc.ig.guideresto.services.UserService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,6 +20,7 @@ public class Application {
 
     private static Scanner scanner;
     private static final Logger logger = LogManager.getLogger(Application.class);
+    private static UserService userService;
 
     public static void main(String[] args) {
 
@@ -108,26 +110,28 @@ public class Application {
      * Affiche la liste de tous les restaurants, sans filtre
      */
     private static void showRestaurantsList() {
-        System.out.println("Liste des restaurants : ");
-        RestaurantMapper restaurantMapper = new RestaurantMapper();
-        Restaurant restaurant = pickRestaurant(restaurantMapper.findAll());
 
-        if (restaurant != null) { // Si l'utilisateur a choisi un restaurant, on l'affiche, sinon on ne fait rien et l'application va réafficher le menu principal
-            showRestaurant(restaurant);
+            System.out.println("Liste des restaurants : ");
+
+            // ⚡ On utilise le service au lieu du mapper
+            Set<Restaurant> restaurants = userService.getAllRestaurants();
+
+            Restaurant restaurant = pickRestaurant(restaurants);
+
+            if (restaurant != null) {
+                showRestaurant(restaurant);
+            }
         }
-    }
-
-    /**
+        /**
      * Affiche une liste de restaurants dont le nom contient une chaîne de caractères saisie par l'utilisateur
      */
     private static void searchRestaurantByName() {
         System.out.println("Veuillez entrer une partie du nom recherché : ");
         String research = readString();
 
-        RestaurantMapper restaurantMapper = new RestaurantMapper();
         try {
-            // Récupère directement tous les restaurants dont le nom contient la chaîne recherchée
-            Set<Restaurant> restaurants = restaurantMapper.findByName(research);
+            // ⚡ On passe par le service, plus par le mapper
+            Set<Restaurant> restaurants = userService.findRestaurantsByName(research);
 
             if (restaurants.isEmpty()) {
                 System.out.println("Aucun restaurant trouvé pour : " + research);
@@ -152,15 +156,23 @@ public class Application {
     private static void searchRestaurantByCity() {
         System.out.print("Entrez une partie du nom de la ville : ");
         String research = readString();
-        RestaurantMapper restaurantMapper = new RestaurantMapper();
-        Set<Restaurant> allRestaurants = restaurantMapper.findAll();
-        Set<Restaurant> filtered = new LinkedHashSet<>();
-        for (Restaurant rest : allRestaurants) {
-            if (rest.getAddress().getCity().getCityName().toUpperCase().contains(research.toUpperCase()))
-                filtered.add(rest);
+        try {
+            // ⚡ On passe par le service au lieu du mapper
+            Set<Restaurant> filtered = userService.findRestaurantsByCity(research);
+
+            if (filtered.isEmpty()) {
+                System.out.println("Aucun restaurant trouvé dans une ville contenant : " + research);
+                return;
+            }
+
+            Restaurant chosen = pickRestaurant(filtered);
+            if (chosen != null) {
+                showRestaurant(chosen);
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la recherche par ville : " + e.getMessage());
+            e.printStackTrace();
         }
-        Restaurant chosen = pickRestaurant(filtered);
-        if (chosen != null) showRestaurant(chosen);
     }
     /**
      * L'utilisateur choisit une ville parmi celles présentes dans le système.
@@ -170,23 +182,27 @@ public class Application {
      */
     private static City pickCity(Set<City> cities) {
         System.out.println("Villes disponibles :");
-        for (City c : cities) System.out.println(c.getZipCode() + " " + c.getCityName());
+        for (City c : cities) {
+            System.out.println(c.getZipCode() + " " + c.getCityName());
+        }
+
         System.out.println("Entrez le NPA, ou 'NEW' pour créer une nouvelle ville :");
         String choice = readString();
 
-        CityMapper cityMapper = new CityMapper();
         if (choice.equalsIgnoreCase("NEW")) {
             System.out.print("Nom de la nouvelle ville : ");
             String name = readString();
             System.out.print("Code postal : ");
             String zip = readString();
-            City newCity = new City(null, name, zip);
-            cityMapper.create(newCity);
+
+            // ⚡ Création via le service, pas le mapper
+            City newCity = userService.addCity(name, zip);
             return newCity;
         } else {
             return cities.stream()
                     .filter(c -> c.getZipCode().equalsIgnoreCase(choice))
-                    .findFirst().orElse(null);
+                    .findFirst()
+                    .orElse(null);
         }
     }
 
@@ -211,32 +227,34 @@ public class Application {
      * Si l'utilisateur sélectionne un restaurant, ce dernier lui sera affiché.
      */
     private static void searchRestaurantByType() {
-        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper();
-        RestaurantMapper restaurantMapper = new RestaurantMapper();
+        try {
+            // Récupère tous les types via le service si tu en as un,
+            // sinon tu peux passer par un Set déjà connu
+            Set<RestaurantType> types = userService.getAllTypes(); // si tu as un service pour les types
+            RestaurantType chosenType = pickRestaurantType(types);
+            if (chosenType == null) return;
 
-        Set<RestaurantType> types = typeMapper.findAll();
-        RestaurantType chosenType = pickRestaurantType(types);
-        if (chosenType == null) return;
+            // ⚡ Utilisation du service pour filtrer par type
+            Set<Restaurant> filtered = userService.findRestaurantsByType(chosenType.getLabel());
 
-        Set<Restaurant> all = restaurantMapper.findAll();
-        Set<Restaurant> filtered = new LinkedHashSet<>();
-        for (Restaurant rest : all) {
-            if (rest.getType().getId() == chosenType.getId())
-                filtered.add(rest);
+            if (filtered.isEmpty()) {
+                System.out.println("Aucun restaurant trouvé pour le type : " + chosenType.getLabel());
+                return;
+            }
+
+            Restaurant chosen = pickRestaurant(filtered);
+            if (chosen != null) showRestaurant(chosen);
+
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la recherche par type : " + e.getMessage());
+            e.printStackTrace();
         }
-
-        Restaurant chosen = pickRestaurant(filtered);
-        if (chosen != null) showRestaurant(chosen);
     }
 
     /**
      * Le programme demande les informations nécessaires à l'utilisateur puis crée un nouveau restaurant dans le système.
      */
     private static void addNewRestaurant() {
-        RestaurantMapper restMapper = new RestaurantMapper();
-        CityMapper cityMapper = new CityMapper();
-        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper();
-
         System.out.print("Nom du restaurant : ");
         String name = readString();
         System.out.print("Description : ");
@@ -246,19 +264,26 @@ public class Application {
         System.out.print("Rue : ");
         String street = readString();
 
+        // Sélection ou création de la ville
         City city = null;
         do {
-            city = pickCity(cityMapper.findAll());
+            city = pickCity(userService.getAllCities());
         } while (city == null);
 
+        // Sélection du type de restaurant
         RestaurantType type = null;
         do {
-            type = pickRestaurantType(typeMapper.findAll());
+            type = pickRestaurantType(userService.getAllTypes());
         } while (type == null);
 
-        Restaurant restaurant = new Restaurant(null, name, desc, website, street, city, type);
-        restMapper.create(restaurant);
-        System.out.println("✅ Restaurant ajouté avec succès !");
+        // Création via le service
+        Restaurant restaurant = userService.addRestaurant(name, desc, website, street, city, type);
+
+        if (restaurant != null) {
+            System.out.println("✅ Restaurant ajouté avec succès !");
+        } else {
+            System.out.println("❌ Une erreur est survenue lors de l'ajout du restaurant.");
+        }
     }
 
     /**
@@ -280,39 +305,41 @@ public class Application {
                 .append(restaurant.getAddress().getCity().getZipCode()).append(" ")
                 .append(restaurant.getAddress().getCity().getCityName()).append("\n");
 
-        // 🔹 BasicEvaluations
-        BasicEvaluationMapper bem = new BasicEvaluationMapper();
-        Set<BasicEvaluation> basicEvalsFromDB = bem.findByRestaurant(restaurant);
+        try {
+            // 🔹 Récupérer les évaluations via les services
+            Set<BasicEvaluation> basicEvalsFromDB = userService.findByRestaurant(restaurant);
+            Set<CompleteEvaluation> completeEvalsFromDB = userService.findByRestaurant(restaurant);
 
-        // 🔹 CompleteEvaluations avec leurs grades
-        CompleteEvaluationMapper cem = new CompleteEvaluationMapper();
-        Set<CompleteEvaluation> completeEvalsFromDB = cem.findByRestaurant(restaurant);
+            // 🔹 Mettre à jour les évaluations du restaurant
+            restaurant.getEvaluations().removeIf(e -> e instanceof CompleteEvaluation);
+            restaurant.getEvaluations().addAll(completeEvalsFromDB);
 
-        // 🔹 Mettre à jour les évaluations du restaurant
-        restaurant.getEvaluations().removeIf(e -> e instanceof CompleteEvaluation);
-        restaurant.getEvaluations().addAll(completeEvalsFromDB);
+            // 🔹 Likes/dislikes
+            sb.append("Nombre de likes : ").append(countLikes(basicEvalsFromDB, true)).append("\n")
+                    .append("Nombre de dislikes : ").append(countLikes(basicEvalsFromDB, false)).append("\n");
 
-        // 🔹 Likes/dislikes
-        sb.append("Nombre de likes : ").append(countLikes(basicEvalsFromDB, true)).append("\n")
-                .append("Nombre de dislikes : ").append(countLikes(basicEvalsFromDB, false)).append("\n");
+            // 🔹 Afficher les CompleteEvaluations
+            sb.append("\nÉvaluations complètes reçues :\n");
+            for (Evaluation eval : restaurant.getEvaluations()) {
+                if (eval instanceof CompleteEvaluation ce) {
+                    sb.append("Evaluation de : ").append(ce.getUsername()).append("\n")
+                            .append("Commentaire : ").append(ce.getComment()).append("\n");
 
-        // 🔹 Afficher les CompleteEvaluations
-        sb.append("\nÉvaluations complètes reçues :\n");
-        for (Evaluation eval : restaurant.getEvaluations()) {
-            if (eval instanceof CompleteEvaluation ce) {
-                sb.append("Evaluation de : ").append(ce.getUsername()).append("\n")
-                        .append("Commentaire : ").append(ce.getComment()).append("\n");
-
-                if (ce.getGrades().isEmpty()) {
-                    sb.append("Aucune note disponible\n");
-                } else {
-                    for (Grade g : ce.getGrades()) {
-                        sb.append(g.getCriteria().getName())
-                                .append(" : ").append(g.getGrade()).append("/5\n");
+                    if (ce.getGrades().isEmpty()) {
+                        sb.append("Aucune note disponible\n");
+                    } else {
+                        for (Grade g : ce.getGrades()) {
+                            sb.append(g.getCriteria().getName())
+                                    .append(" : ").append(g.getGrade()).append("/5\n");
+                        }
                     }
+                    sb.append("\n"); // séparateur
                 }
-                sb.append("\n"); // séparateur
             }
+
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la récupération des évaluations : " + e.getMessage());
+            e.printStackTrace();
         }
 
         System.out.println(sb);
