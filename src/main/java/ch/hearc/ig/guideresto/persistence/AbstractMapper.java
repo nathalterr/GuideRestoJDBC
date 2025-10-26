@@ -72,7 +72,7 @@ public abstract class AbstractMapper<T extends IBusinessObject> {
      * @return Le nombre de villes
      * @En cas d'erreur SQL
      */
-    protected Integer getSequenceValue() {
+    public Integer getSequenceValue() {
         Connection connection = ConnectionUtils.getConnection();
 
         try (PreparedStatement stmt = connection.prepareStatement(getSequenceQuery());

@@ -30,7 +30,7 @@ public class Restaurant implements IBusinessObject {
     }
 
     public Restaurant(Integer id, String name, String description, String website, Localisation address, RestaurantType type) {
-         this.name = name;
+        this.name = name;
         this.description = description;
         this.website = website;
         this.evaluations = new HashSet();

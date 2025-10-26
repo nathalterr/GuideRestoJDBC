@@ -118,50 +118,51 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
 
     @Override
     public RestaurantType create(RestaurantType type) {
-        String sql = "BEGIN INSERT INTO TYPES_GASTRONOMIQUES (libelle, description) " +
-                "VALUES (?, ?) RETURNING numero INTO ?; END;";
+        try {
+            // 🔹 Vérifie si le type existe déjà pour éviter doublon inutile
+            RestaurantType existing = findByName(type.getLabel());
+            if (existing != null) {
+                logger.info("Type '{}' déjà existant, récupération via findByName()", type.getLabel());
+                return existing;
+            }
 
-        try (CallableStatement stmt = connection.prepareCall(sql)) {
-            // 🔹 Paramètres de l'insertion
-            stmt.setString(1, type.getLabel());
-            stmt.setString(2, type.getDescription());
-            stmt.registerOutParameter(3, Types.INTEGER); // ID généré
+            // 🔹 Génération de l'ID via la séquence
+            int id;
+            try (PreparedStatement seqStmt = connection.prepareStatement(
+                    "SELECT SEQ_TYPES_GASTRONOMIQUES.NEXTVAL FROM dual"
+            )) {
+                try (ResultSet rs = seqStmt.executeQuery()) {
+                    if (!rs.next()) throw new SQLException("Impossible de récupérer NEXTVAL pour SEQ_TYPES_GASTRONOMIQUES");
+                    id = rs.getInt(1);
+                }
+            }
+            type.setId(id);
 
-            // 🔹 Exécution
-            stmt.executeUpdate();
-
-            // 🔹 Récupération de l'ID généré et mise à jour de l'objet
-            int generatedId = stmt.getInt(3);
-            type.setId(generatedId);
-
-            // 🔹 Ajout au cache
-            identityMap.put(generatedId, type);
+            // 🔹 Insert dans la table
+            String sql = "INSERT INTO TYPES_GASTRONOMIQUES (numero, libelle, description) VALUES (?, ?, ?)";
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setInt(1, type.getId());
+                stmt.setString(2, type.getLabel());
+                stmt.setString(3, type.getDescription());
+                stmt.executeUpdate();
+            }
 
             // 🔹 Commit si nécessaire
             if (!connection.getAutoCommit()) connection.commit();
 
+            // 🔹 Ajout au cache
+            identityMap.put(type.getId(), type);
+            logger.info("✅ RestaurantType {} créé et ajouté à l'Identity Map", type.getId());
+
             return type;
 
         } catch (SQLException e) {
-            // Gestion d'un doublon
-            if (e.getErrorCode() == 1) { // ORA-00001: doublon
-                logger.info("Type '{}' déjà existant, récupération via findByName()", type.getLabel());
-                try {
-                    return findByName(type.getLabel());
-                } catch (SQLException ex) {
-                    logger.error("Erreur findByName après doublon: {}", ex.getMessage());
-                }
-            } else {
-                logger.error("Erreur create RestaurantType: {}", e.getMessage());
-            }
-
-            // 🔹 Rollback si erreur
+            logger.error("Erreur create RestaurantType: {}", e.getMessage());
             try {
-                connection.rollback();
+                if (!connection.getAutoCommit()) connection.rollback();
             } catch (SQLException r) {
                 logger.error("Rollback failed: {}", r.getMessage());
             }
-
             return null;
         }
     }

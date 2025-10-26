@@ -82,30 +82,47 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
 
     @Override
     public Set<Restaurant> findAll() {
-        Set<Restaurant> restaurants = new HashSet<>();
+        identityMap.clear(); // vider le cache pour recharger depuis la DB
+        Set<Restaurant> restaurants = new LinkedHashSet<>();
         String sql = "SELECT numero, nom, description, site_web, adresse, fk_type, fk_vill FROM RESTAURANTS";
-
-        // Option : vider le cache pour refléter exactement la base
-        identityMap.clear();
 
         try (PreparedStatement stmt = connection.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 int id = rs.getInt("numero");
-                RestaurantType type = new RestaurantTypeMapper().findById(rs.getInt("fk_type"));
-                City city = new CityMapper().findById(rs.getInt("fk_vill"));
 
+                // Création des objets associés
+                int typeId = rs.getInt("fk_type");
+                int cityId = rs.getInt("fk_vill");
+
+                RestaurantType type = this.typeMapper.findById(typeId);
+                City city = this.cityMapper.findById(cityId);
+
+                if (type == null) {
+                    logger.warn("⚠ Restaurant {} ignoré : type {} introuvable", id, typeId);
+                    continue;
+                }
+                if (city == null) {
+                    logger.warn("⚠ Restaurant {} ignoré : city {} introuvable", id, cityId);
+                    continue;
+                }
+
+                // Création de la localisation
+                Localisation address = new Localisation(rs.getString("adresse"), city);
+
+                // Création du restaurant sans ID
                 Restaurant restaurant = new Restaurant(
-                        id,
                         rs.getString("nom"),
                         rs.getString("description"),
                         rs.getString("site_web"),
-                        rs.getString("adresse"),
-                        city,
+                        address,
                         type
                 );
+                // Assigner l'ID
+                restaurant.setId(id);
 
+                // Ajout au cache et au set
                 identityMap.put(id, restaurant);
                 restaurants.add(restaurant);
             }
@@ -117,12 +134,26 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
         return restaurants;
     }
 
+
     @Override
     public Restaurant create(Restaurant restaurant) {
-        String sql = "INSERT INTO RESTAURANTS (numero, nom, description, site_web, adresse, fk_type, fk_vill) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try {
-            if (restaurant.getId() == null) restaurant.setId(getSequenceValue());
+            // 🔹 Assure que le restaurant a un ID
+            if (restaurant.getId() == null) {
+                restaurant.setId(getSequenceValue()); // ta méthode qui récupère NEXTVAL
+            }
 
+            // 🔹 Vérifie que le type et la ville ont un ID valide
+            if (restaurant.getType() == null || restaurant.getType().getId() == null) {
+                throw new IllegalStateException("RestaurantType non initialisé ou sans ID");
+            }
+            if (restaurant.getAddress() == null || restaurant.getAddress().getCity() == null ||
+                    restaurant.getAddress().getCity().getId() == null) {
+                throw new IllegalStateException("City non initialisée ou sans ID");
+            }
+
+            // 🔹 Insert dans la table
+            String sql = "INSERT INTO RESTAURANTS (numero, nom, description, site_web, adresse, fk_type, fk_vill) VALUES (?, ?, ?, ?, ?, ?, ?)";
             try (PreparedStatement stmt = connection.prepareStatement(sql)) {
                 stmt.setInt(1, restaurant.getId());
                 stmt.setString(2, restaurant.getName());
@@ -134,16 +165,24 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                 stmt.executeUpdate();
             }
 
+            // 🔹 Commit si nécessaire
             if (!connection.getAutoCommit()) connection.commit();
+
+            // 🔹 Ajout au cache
             identityMap.put(restaurant.getId(), restaurant);
             logger.info("✅ Restaurant {} créé et ajouté à l'Identity Map", restaurant.getId());
+
             return restaurant;
 
         } catch (SQLException e) {
             logger.error("Erreur create Restaurant: {}", e.getMessage());
-            try { if (!connection.getAutoCommit()) connection.rollback(); } catch (SQLException ex) { logger.error("Rollback failed: {}", ex.getMessage()); }
+            try {
+                if (!connection.getAutoCommit()) connection.rollback();
+            } catch (SQLException ex) {
+                logger.error("Rollback failed: {}", ex.getMessage());
+            }
+            return null;
         }
-        return null;
     }
 
     @Override
