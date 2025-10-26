@@ -33,8 +33,8 @@ public class UserService {
     private RestaurantTypeMapper typeMapper;
     private GradeMapper gradeMapper;
     private RestaurantMapper restaurantMapper;
-    private EvaluationCriteria evaluationCriteria;
-    private BasicEvaluation basicEvaluation;
+    private EvaluationCriteriaMapper evaluationCriteriaMapper;
+    private BasicEvaluationMapper basicEvaluation;
     private CompleteEvaluationMapper completeEvaluationMapper;
 
     public UserService() {
@@ -43,9 +43,9 @@ public class UserService {
         typeMapper = mapperFactory.getTypeMapper();
         gradeMapper = mapperFactory.getGradeMapper();
         restaurantMapper = mapperFactory.getRestaurantMapper();
-        evaluationCriteria = new EvaluationCriteria();
-        basicEvaluation = new BasicEvaluation();
-        completeEvaluationMapper = new CompleteEvaluationMapper();
+        evaluationCriteriaMapper = mapperFactory.getCriteriaMapper();
+        basicEvaluation = mapperFactory.getBasicEvalMapper();
+        completeEvaluationMapper = mapperFactory.getCompleteEvalMapper();
     }
     public Set<City> getAllCities() {
         return cityMapper.findAll();
@@ -83,7 +83,7 @@ public class UserService {
         return restaurantMapper.findAll();
     }
 
-    public Set<Restaurant> findRestaurantsByName(String name) {
+    public Set<Restaurant> findRestaurantsByName(String name) throws SQLException{
         return restaurantMapper.findByName(name);
     }
 
@@ -128,11 +128,11 @@ public class UserService {
         return restaurantMapper.update(restaurant);
     }
 
-    public boolean updateRestaurantAddress(Restaurant restaurant, String newStreet, City city) {
+    public boolean updateRestaurantAddress(Restaurant restaurant, String newStreet, City city) throws SQLException{
         return restaurantMapper.updateAddress(restaurant, newStreet, city);
     }
 
-    public boolean deleteRestaurant(Restaurant restaurant) {
+    public boolean deleteRestaurantService(Restaurant restaurant) {
         return restaurantMapper.delete(restaurant);
     }
 
@@ -217,7 +217,7 @@ public class UserService {
         return restaurantMapper.update(restaurant);
     }
 
-    public City addOrGetCity(String cityName, String postalCode) {
+    public City addOrGetCity(String cityName, String postalCode) throws SQLException{
         City city = cityMapper.findByName(cityName);
         if (city == null) {
             city = new City(null, postalCode, cityName);
@@ -225,30 +225,4 @@ public class UserService {
         }
         return city;
     }
-    private static void editRestaurantAddress(Restaurant restaurant) {
-        System.out.println("Edition de l'adresse d'un restaurant !");
-
-        System.out.print("Nouvelle rue : ");
-        String newStreet = readString();
-
-        System.out.print("Nom de la ville : ");
-        String cityName = readString();
-
-        City dbCity = userService.findCityByName(cityName);
-        String postalCode = null;
-        if (dbCity == null) {
-            System.out.print("Code postal pour la nouvelle ville : ");
-            postalCode = readString();
-        }
-
-        boolean updated = userService.updateRestaurantAddress(restaurant, newStreet, cityName, postalCode);
-        System.out.println(updated ? "Adresse mise à jour avec succès !" : "Erreur lors de la mise à jour.");
-    }
-
-    public boolean deleteRestaurantService(Restaurant restaurant) {
-        if (restaurant == null) return false;
-        return restaurantMapper.delete(restaurant);
-    }
-
-
 }

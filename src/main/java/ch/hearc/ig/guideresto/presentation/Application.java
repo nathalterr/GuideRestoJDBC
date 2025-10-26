@@ -31,7 +31,11 @@ public class Application {
         do {
             printMainMenu();
             choice = readInt();
-            proceedMainMenu(choice);
+            try {
+                proceedMainMenu(choice);
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+            }
         } while (choice != 0);
     }
 
@@ -54,7 +58,7 @@ public class Application {
      *
      * @param choice Un nombre entre 0 et 5.
      */
-    private static void proceedMainMenu(int choice) {
+    private static void proceedMainMenu(int choice) throws  SQLException {
         switch (choice) {
             case 1:
                 showRestaurantsList();
@@ -109,7 +113,7 @@ public class Application {
     /**
      * Affiche la liste de tous les restaurants, sans filtre
      */
-    private static void showRestaurantsList() {
+    private static void showRestaurantsList() throws SQLException{
 
             System.out.println("Liste des restaurants : ");
 
@@ -292,58 +296,21 @@ public class Application {
      * @param restaurant Le restaurant à afficher
      */
 
-    private static void showRestaurant(Restaurant restaurant) {
-        System.out.println("Affichage d'un restaurant : ");
-        StringBuilder sb = new StringBuilder();
+    private static void showRestaurant(Restaurant restaurant) throws SQLException {
+        Set<Restaurant> allRestaurants = userService.getAllRestaurants();
 
-        // 🔹 Infos générales
-        sb.append(restaurant.getName()).append("\n")
-                .append(restaurant.getDescription()).append("\n")
-                .append(restaurant.getType().getLabel()).append("\n")
-                .append(restaurant.getWebsite()).append("\n")
-                .append(restaurant.getAddress().getStreet()).append(", ")
-                .append(restaurant.getAddress().getCity().getZipCode()).append(" ")
-                .append(restaurant.getAddress().getCity().getCityName()).append("\n");
-
-        try {
-            // 🔹 Récupérer les évaluations via les services
-            Set<BasicEvaluation> basicEvalsFromDB = userService.findByRestaurant(restaurant);
-            Set<CompleteEvaluation> completeEvalsFromDB = userService.findByRestaurant(restaurant);
-
-            // 🔹 Mettre à jour les évaluations du restaurant
-            restaurant.getEvaluations().removeIf(e -> e instanceof CompleteEvaluation);
-            restaurant.getEvaluations().addAll(completeEvalsFromDB);
-
-            // 🔹 Likes/dislikes
-            sb.append("Nombre de likes : ").append(countLikes(basicEvalsFromDB, true)).append("\n")
-                    .append("Nombre de dislikes : ").append(countLikes(basicEvalsFromDB, false)).append("\n");
-
-            // 🔹 Afficher les CompleteEvaluations
-            sb.append("\nÉvaluations complètes reçues :\n");
-            for (Evaluation eval : restaurant.getEvaluations()) {
-                if (eval instanceof CompleteEvaluation ce) {
-                    sb.append("Evaluation de : ").append(ce.getUsername()).append("\n")
-                            .append("Commentaire : ").append(ce.getComment()).append("\n");
-
-                    if (ce.getGrades().isEmpty()) {
-                        sb.append("Aucune note disponible\n");
-                    } else {
-                        for (Grade g : ce.getGrades()) {
-                            sb.append(g.getCriteria().getName())
-                                    .append(" : ").append(g.getGrade()).append("/5\n");
-                        }
-                    }
-                    sb.append("\n"); // séparateur
-                }
-            }
-
-        } catch (Exception e) {
-            System.err.println("Erreur lors de la récupération des évaluations : " + e.getMessage());
-            e.printStackTrace();
+        if (allRestaurants.isEmpty()) {
+            System.out.println("Aucun restaurant trouvé !");
+            return;
         }
 
-        System.out.println(sb);
-
+        System.out.println("Liste des restaurants :");
+        int index = 1;
+        for (Restaurant r : allRestaurants) {
+            System.out.println(index + ". " + r.getName() + " - "
+                    + r.getAddress().getCity().getCityName() + " (" + r.getAddress().getCity().getZipCode() + ")");
+            index++;
+        }
         // 🔹 Menu actions
         int choice;
         do {
@@ -413,7 +380,7 @@ public class Application {
      * @param choice     Un numéro d'action, entre 0 et 6. Si le numéro ne se trouve pas dans cette plage, l'application ne fait rien et va réafficher le menu complet.
      * @param restaurant L'instance du restaurant sur lequel l'action doit être réalisée
      */
-    private static void proceedRestaurantMenu(int choice, Restaurant restaurant) {
+    private static void proceedRestaurantMenu(int choice, Restaurant restaurant) throws  SQLException {
         switch (choice) {
             case 1:
                 addBasicEvaluation(restaurant, true);
@@ -491,7 +458,7 @@ public class Application {
      *
      * @param restaurant Le restaurant à modifier
      */
-    private static void editRestaurant(Restaurant restaurant) {
+    private static void editRestaurant(Restaurant restaurant) throws SQLException {
         System.out.println("Edition d'un restaurant !");
 
         System.out.print("Nouveau nom : ");
@@ -531,7 +498,7 @@ public class Application {
      *
      * @param restaurant Le restaurant dont l'adresse doit être mise à jour.
      */
-    private static void editRestaurantAddress(Restaurant restaurant) {
+    public static void editRestaurantAddress(Restaurant restaurant) throws SQLException {
         System.out.println("Edition de l'adresse d'un restaurant !");
 
         System.out.print("Nouvelle rue : ");
@@ -540,16 +507,18 @@ public class Application {
         System.out.print("Nom de la ville : ");
         String cityName = readString();
 
-        City dbCity = userService.findCityByName(cityName);
+        City city = userService.findCityByName(cityName); // appel direct
         String postalCode = null;
-        if (dbCity == null) {
+        if (city == null) {
             System.out.print("Code postal pour la nouvelle ville : ");
             postalCode = readString();
+            city = userService.addOrGetCity(cityName,postalCode);
         }
 
-        boolean updated = userService.updateRestaurantAddress(restaurant, newStreet, cityName, postalCode);
+        boolean updated = userService.updateRestaurantAddress(restaurant, newStreet, city); // appel direct
         System.out.println(updated ? "Adresse mise à jour avec succès !" : "Erreur lors de la mise à jour.");
     }
+
 
 
     /**
@@ -649,7 +618,7 @@ public class Application {
      *
      * @return Une chaîne de caractères saisie par l'utilisateur au clavier
      */
-    private static String readString() {
+    public static String readString() {
         return scanner.nextLine();
     }
 
