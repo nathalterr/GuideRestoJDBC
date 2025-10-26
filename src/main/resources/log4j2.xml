@@ -1,28 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration xmlns="https://logging.apache.org/xml/ns"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-               xsi:schemaLocation="
-                   https://logging.apache.org/xml/ns
-                   https://logging.apache.org/xml/ns/log4j-config-2.xsd">
+<Configuration status="WARN">
     <Appenders>
-        <Console name="CONSOLE">
+        <!-- Console : seulement WARN et ERROR -->
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <ThresholdFilter level="WARN" onMatch="ACCEPT" onMismatch="DENY"/>
             <PatternLayout pattern="%p - %c{1}:%L - %m%n"/>
         </Console>
+
+        <!-- Fichier principal : warnings et erreurs -->
         <File name="MAIN" fileName="logs/main.log">
+            <ThresholdFilter level="WARN" onMatch="ACCEPT" onMismatch="DENY"/>
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
         </File>
+
+        <!-- Fichier debug : tout DEBUG et plus -->
         <File name="DEBUG_LOG" fileName="logs/debug.log">
+            <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
             <PatternLayout pattern="%d [%t] %p %c:%L - %m%n"/>
         </File>
     </Appenders>
+
     <Loggers>
-        <!--<Logger name="ch.hearc.ig.guideresto" level="DEBUG" additivity="false">
+        <!-- Logger spécifique au package : tout DEBUG/INFO/WARN/ERROR dans debug.log et main.log, PAS en console -->
+        <Logger name="ch.hearc.ig.guideresto" level="DEBUG" additivity="false">
             <AppenderRef ref="DEBUG_LOG"/>
-        </Logger>-->
-        <Root level="DEBUG">
-            <AppenderRef ref="CONSOLE" level="INFO"/>
-            <AppenderRef ref="MAIN" level="WARN"/>
-            <AppenderRef ref="DEBUG_LOG" level="DEBUG"/>
+            <AppenderRef ref="MAIN"/>
+        </Logger>
+
+        <!-- Root : tout autre logger, console montre seulement WARN et ERROR -->
+        <Root level="WARN">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="MAIN"/>
         </Root>
     </Loggers>
 </Configuration>

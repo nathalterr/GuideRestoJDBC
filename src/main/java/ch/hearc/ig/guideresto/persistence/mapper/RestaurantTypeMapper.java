@@ -32,7 +32,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
     public RestaurantType findById(int id) {
         // 🔹 Vérifie d'abord dans le cache
         if (identityMap.containsKey(id)) {
-            logger.info("⚡ RestaurantType {} récupéré depuis l'Identity Map", id);
+
             return identityMap.get(id);
         }
 
@@ -68,7 +68,7 @@ public class RestaurantTypeMapper extends AbstractMapper<RestaurantType> {
 
                     // 🔹 Vérifie le cache avant de créer un nouvel objet
                     if (identityMap.containsKey(id)) {
-                        logger.info("⚡ RestaurantType '{}' récupéré depuis l'Identity Map", label);
+
                         return identityMap.get(id);
                     }
 

@@ -69,7 +69,7 @@ public class RestaurantMapper extends AbstractMapper<Restaurant> {
                     );
 
                     identityMap.put(id, restaurant);
-                    logger.info("✅ Restaurant {} ajouté à l'Identity Map", id);
+
                     return restaurant;
                 }
             }

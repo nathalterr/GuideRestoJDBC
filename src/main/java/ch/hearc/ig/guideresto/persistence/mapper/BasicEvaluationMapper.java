@@ -7,16 +7,10 @@ import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
-import ch.hearc.ig.guideresto.business.BasicEvaluation;
-import ch.hearc.ig.guideresto.business.Restaurant;
-import ch.hearc.ig.guideresto.persistence.AbstractMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.sql.*;
 import java.util.*;
-
-import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
 
 public class BasicEvaluationMapper extends AbstractMapper<BasicEvaluation> {
 

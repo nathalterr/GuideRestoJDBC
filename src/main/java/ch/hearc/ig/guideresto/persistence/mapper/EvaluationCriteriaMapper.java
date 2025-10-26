@@ -25,7 +25,6 @@ public class EvaluationCriteriaMapper extends AbstractMapper<EvaluationCriteria>
     public EvaluationCriteria findById(int id) {
         // ✅ Vérifie d’abord le cache
         if (identityMap.containsKey(id)) {
-            System.out.println("⚡ Critère " + id + " récupéré depuis l'Identity Map");
             return identityMap.get(id);
         }
 

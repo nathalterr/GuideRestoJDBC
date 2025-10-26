@@ -3,40 +3,27 @@ package ch.hearc.ig.guideresto.services;
 import ch.hearc.ig.guideresto.business.City;
 import ch.hearc.ig.guideresto.business.Restaurant;
 import ch.hearc.ig.guideresto.business.RestaurantType;
-
-import ch.hearc.ig.guideresto.business.RestaurantType;
 import ch.hearc.ig.guideresto.persistence.mapper.RestaurantTypeMapper;
 import ch.hearc.ig.guideresto.business.*;
 import ch.hearc.ig.guideresto.persistence.mapper.*;
-import ch.hearc.ig.guideresto.business.City;
 import ch.hearc.ig.guideresto.persistence.mapper.CityMapper;
-
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Set;
-import java.util.Set;
-
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import static ch.hearc.ig.guideresto.persistence.ConnectionUtils.getConnection;
-import static ch.hearc.ig.guideresto.presentation.Application.readString;
 
 public class UserService {
     private Connection connection;
-    private CityMapper cityMapper;
-    private RestaurantTypeMapper typeMapper;
-    private GradeMapper gradeMapper;
-    private RestaurantMapper restaurantMapper;
-    private EvaluationCriteriaMapper evaluationCriteriaMapper;
-    private BasicEvaluationMapper basicEvaluation;
-    private CompleteEvaluationMapper completeEvaluationMapper;
+    private final CityMapper cityMapper;
+    private final RestaurantTypeMapper typeMapper;
+    private final GradeMapper gradeMapper;
+    private final RestaurantMapper restaurantMapper;
+    private final EvaluationCriteriaMapper evaluationCriteriaMapper;
+    private final BasicEvaluationMapper basicEvaluation;
+    private final CompleteEvaluationMapper completeEvaluationMapper;
 
     public UserService() {
         MapperFactory mapperFactory = new MapperFactory();
