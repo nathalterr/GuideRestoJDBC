@@ -131,4 +131,19 @@ public class UserService {
     public boolean deleteRestaurant(Restaurant restaurant) {
         return restaurantMapper.delete(restaurant);
     }
+
+    public RestaurantType findTypeInSetByLabel(Set<RestaurantType> types, String label) {
+        return types.stream()
+                .filter(t -> t.getLabel().equalsIgnoreCase(label))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public City findCityByZipCode(Set<City> cities, String zipCode) {
+        return cities.stream()
+                .filter(c -> c.getZipCode().equalsIgnoreCase(zipCode))
+                .findFirst()
+                .orElse(null);
+    }
+
 }
