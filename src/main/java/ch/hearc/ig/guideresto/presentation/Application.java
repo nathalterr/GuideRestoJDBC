@@ -139,7 +139,7 @@ public class Application {
             if (restaurant != null) {
                 showRestaurant(restaurant);
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             System.err.println("Erreur lors de la recherche des restaurants : " + e.getMessage());
             e.printStackTrace();
         }

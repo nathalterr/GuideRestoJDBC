@@ -13,19 +13,28 @@ public class City implements IBusinessObject {
     private String cityName;
     private Set<Restaurant> restaurants;
 
+    // Constructeur par défaut
     public City() {
-        this(null, null);
+        this.restaurants = new HashSet<>();
     }
 
+    // Constructeur “léger” : juste l’ID, pour éviter la récursion
+    public City(Integer id) {
+        this.id = id;
+        this.restaurants = new HashSet<>();
+    }
+
+    // Constructeur avec zip et nom (ID null)
     public City(String zipCode, String cityName) {
         this(null, zipCode, cityName);
     }
 
+    // Constructeur complet
     public City(Integer id, String zipCode, String cityName) {
         this.id = id;
         this.zipCode = zipCode;
         this.cityName = cityName;
-        this.restaurants = new HashSet();
+        this.restaurants = new HashSet<>();
     }
 
     public Integer getId() {

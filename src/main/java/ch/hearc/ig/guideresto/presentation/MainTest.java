@@ -1,76 +1,122 @@
 package ch.hearc.ig.guideresto.presentation;
 
 import ch.hearc.ig.guideresto.business.*;
-import ch.hearc.ig.guideresto.persistence.mapper.CityMapper;
-import ch.hearc.ig.guideresto.persistence.mapper.RestaurantMapper;
-import ch.hearc.ig.guideresto.persistence.mapper.RestaurantTypeMapper;
+import ch.hearc.ig.guideresto.persistence.mapper.*;
 
+import java.util.Random;
 import java.util.Set;
 
 public class MainTest {
 
-
     public static void main(String[] args) throws Exception {
-        RestaurantMapper mapper = new RestaurantMapper();
 
-        // 🔹 1️⃣ Récupérer une ville et un type existants dans la DB
-        City testCity = new CityMapper().findById(1);               // ID d’une ville existante
-        RestaurantType testType = new RestaurantTypeMapper().findById(1); // ID d’un type existant
+        System.out.println("==== INITIALISATION DES MAPPERS ====");
+        CityMapper cityMapper = new CityMapper();
+        RestaurantTypeMapper typeMapper = new RestaurantTypeMapper();
+        GradeMapper gradeMapper = new GradeMapper();
+        BasicEvaluationMapper basicEvalMapper = new BasicEvaluationMapper();
+        RestaurantMapper restaurantMapper = new RestaurantMapper();
+        CompleteEvaluationMapper completeEvalMapper = new CompleteEvaluationMapper();
+        EvaluationCriteriaMapper critMapper = new EvaluationCriteriaMapper();
 
-        if (testCity == null || testType == null) {
-            System.out.println("Erreur : il faut au moins une ville et un type existants dans la DB !");
-            return;
+        System.out.println("==== CREATION DE LA VILLE ET DU TYPE ====");
+        City city = new City("12345", "Testville");
+        cityMapper.create(city);
+
+        RestaurantType type = new RestaurantType("TestCuisine", "Cuisine de test");
+        typeMapper.create(type);
+
+        System.out.println("==== CREATION RESTAURANT ====");
+        Restaurant rest = new Restaurant(
+                null,
+                "Le Testeur",
+                "Description Test",
+                "http://test.com",
+                new Localisation("1 rue du Test", city),
+                type
+        );
+        restaurantMapper.create(rest);
+
+        System.out.println("==== CREATION BASIC EVALUATION ====");
+        BasicEvaluation like1 = new BasicEvaluation(null, new java.util.Date(), rest, true, "127.0.0.1");
+        BasicEvaluation like2 = new BasicEvaluation(null, new java.util.Date(), rest, false, "192.168.0.1");
+        basicEvalMapper.create(like1);
+        basicEvalMapper.create(like2);
+
+        System.out.println("==== CREATION COMPLETE EVALUATION ====");
+        CompleteEvaluation completeEval = new CompleteEvaluation(null, rest, "a l'aide", "userTest");
+        completeEvalMapper.create(completeEval);
+
+        System.out.println("==== CREATION GRADES SUR COMPLETE EVALUATION ====");
+        Set<EvaluationCriteria> allCriteria = critMapper.findAll();
+        if (allCriteria.isEmpty()) {
+            critMapper.create(new EvaluationCriteria(null, "Service"));
+            critMapper.create(new EvaluationCriteria(null, "Cuisine"));
+            critMapper.create(new EvaluationCriteria(null, "Ambiance"));
+            allCriteria = critMapper.findAll();
         }
 
-        // 🔹 2️⃣ Création d'un restaurant
-        Restaurant newRest = new Restaurant(
-                null,
-                "TestRestaurant",
-                "Description test",
-                "http://test.com",
-                new Localisation("123 Test Street", testCity),
-                testType
-        );
+        Random random = new Random();
+        for (EvaluationCriteria crit : allCriteria) {
+            Grade grade = new Grade(null, random.nextInt(6), completeEval, crit);
+            gradeMapper.create(grade);
+        }
 
-        // Création en DB et ajout au cache
-        Restaurant created = mapper.create(newRest);
-        System.out.println("Créé : " + created);
+        System.out.println("==== TEST: FIND ALL RESTAURANTS ====");
+        Set<Restaurant> allRests = restaurantMapper.findAll();
+        for (Restaurant r : allRests) {
+            System.out.println("Restaurant: " + r.getName() + " (" + r.getId() + ")");
+        }
 
-        // 🔹 3️⃣ Récupération via findById (doit passer par le cache)
-        Restaurant cached = mapper.findById(created.getId());
-        System.out.println("Récupéré depuis cache : " + cached);
-        System.out.println("Même instance ? " + (created == cached)); // doit être true
+        System.out.println("==== TEST: FIND BY CITY ====");
+        Set<Restaurant> cityRests = restaurantMapper.findByCity("Testville");
+        System.out.println("Restaurants in Testville: " + cityRests.size());
 
-        // 🔹 4️⃣ Mise à jour
-        created.setName("TestRestaurantModifié");
-        mapper.update(created);
+        System.out.println("==== TEST: FIND BY RESTAURANT TYPE ====");
+        Set<Restaurant> typeRests = restaurantMapper.findByRestaurantType("TestCuisine");
+        System.out.println("Restaurants of type TestCuisine: " + typeRests.size());
 
-        // Récupération à nouveau pour vérifier cache mis à jour
-        Restaurant updated = mapper.findById(created.getId());
-        System.out.println("Après update : " + updated.getName());
+        System.out.println("==== TEST: FIND BY NAME ====");
+        Set<Restaurant> foundByName = restaurantMapper.findByName("Le Testeur");
+        System.out.println("Restaurants trouvés par nom : " + foundByName.size());
+        for (Restaurant r : foundByName) {
+            System.out.println("➡️ " + r.getName() + " (id=" + r.getId() + ")");
+        }
 
-        // 🔹 5️⃣ Recherche par nom
-        Set<Restaurant> byName = mapper.findByName("TestRestaurantModifié");
-        System.out.println("Recherche par nom : " + byName);
+        System.out.println("==== TEST: UPDATE RESTAURANT ====");
+        rest.setName("Le Testeur Modifié");
+        restaurantMapper.update(rest);
+        System.out.println("Nom mis à jour: " + restaurantMapper.findById(rest.getId()).getName());
 
-        // 🔹 6️⃣ Recherche par ville
-        Set<Restaurant> byCity = mapper.findByCity(testCity.getCityName());
-        System.out.println("Recherche par ville : " + byCity);
+        System.out.println("==== TEST: UPDATE COMPLETE EVALUATION ====");
+        completeEval.setComment("10.0.0.1");
+        completeEvalMapper.update(completeEval);
+        System.out.println("Commentaire mis à jour: " + completeEvalMapper.findById(completeEval.getId()).getComment());
 
-        // Si tu veux récupérer un seul restaurant depuis le Set
-        Restaurant firstFromCity = byCity.isEmpty() ? null : byCity.iterator().next();
-        System.out.println("Premier restaurant de la ville : " + firstFromCity);
+        System.out.println("==== TEST: UPDATE BASIC EVALUATION ====");
+        like1.setLikeRestaurant(false);
+        basicEvalMapper.update(like1);
+        System.out.println("Like1 mis à jour: " + basicEvalMapper.findById(like1.getId()).getLikeRestaurant());
 
-        // 🔹 7️⃣ Recherche par type
-        Set<Restaurant> byType = mapper.findByRestaurantType(testType.getLabel());
-        System.out.println("Recherche par type : " + byType);
+        System.out.println("==== TEST: DELETE GRADES ====");
+        for (Grade g : gradeMapper.findByCompleteEvaluation(completeEval)) {
+            gradeMapper.delete(g);
+        }
+        System.out.println("Grades après suppression: " + gradeMapper.findByCompleteEvaluation(completeEval).size());
 
-        // 🔹 8️⃣ Suppression
-        boolean deleted = mapper.delete(created);
-        System.out.println("Suppression : " + deleted);
+        System.out.println("==== TEST: DELETE COMPLETE EVALUATION ====");
+        completeEvalMapper.delete(completeEval);
+        System.out.println("CompleteEvaluations restantes: " + completeEvalMapper.findAll().size());
 
-        // Vérification cache après suppression
-        Restaurant afterDelete = mapper.findById(created.getId());
-        System.out.println("Après suppression (doit être null) : " + afterDelete);
+        System.out.println("==== TEST: DELETE BASIC EVALUATIONS ====");
+        basicEvalMapper.delete(like1);
+        basicEvalMapper.delete(like2);
+        System.out.println("BasicEvaluations restantes: " + basicEvalMapper.findAll().size());
+
+        System.out.println("==== TEST: DELETE RESTAURANT ====");
+        restaurantMapper.delete(rest);
+        System.out.println("Restaurants restantes: " + restaurantMapper.findAll().size());
+
+        System.out.println("==== FIN DU TEST COMPLET ====");
     }
 }

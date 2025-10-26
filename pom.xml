@@ -45,5 +45,18 @@
             <version>${log4j.version}</version>
             <scope>runtime</scope>
         </dependency>
+            <!-- API SLF4J -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>2.0.16</version>
+            </dependency>
+
+            <!-- Implémentation simple (console) -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-simple</artifactId>
+                <version>2.0.16</version>
+            </dependency>
     </dependencies>
 </project>
